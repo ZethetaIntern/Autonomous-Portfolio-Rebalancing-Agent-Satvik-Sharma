@@ -6,6 +6,7 @@ convex rebalancing, and explainable decision framework calibrated to Indian capi
 
 from __future__ import annotations
 
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -59,6 +60,22 @@ with col_head2:
         '<span class="status-badge badge-normal">SEBI AUDIT PASS</span>',
         unsafe_allow_html=True,
     )
+    pdf_candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "docs", "WealthPilot_AI_Project_Report.pdf"),
+        os.path.join(os.path.dirname(__file__), "..", "..", "WealthPilot_AI_Project_Report.pdf"),
+    ]
+    for p in pdf_candidates:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                pdf_bytes = f.read()
+            st.download_button(
+                label="📄 Download Report (PDF)",
+                data=pdf_bytes,
+                file_name="WealthPilot_AI_Project_Report.pdf",
+                mime="application/pdf",
+                type="primary",
+            )
+            break
 
 st.divider()
 
