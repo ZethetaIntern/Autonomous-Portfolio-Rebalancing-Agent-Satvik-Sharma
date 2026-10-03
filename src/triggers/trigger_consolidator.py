@@ -116,7 +116,6 @@ class TriggerConsolidator:
         portfolio_record: Dict[str, Any],
     ) -> ConsolidatedRebalanceEvent:
         """Consolidate multiple signals into a single unified event."""
-        # 1. Sort by priority rank descending, then urgency score descending
         sorted_signals = sorted(
             signals,
             key=lambda s: (s.priority_rank, s.urgency_score),
@@ -128,15 +127,12 @@ class TriggerConsolidator:
         highest_tier = primary_signal.tier
         primary_driver = primary_signal.trigger_type
 
-        # 2. Composite urgency score: max + 0.1 * sum(others)
         max_urgency = primary_signal.urgency_score
         other_urgencies = sum(s.urgency_score for s in sorted_signals[1:])
         composite_urgency = round(max_urgency + (0.15 * other_urgencies), 2)
 
-        # 3. Execution Timeline SLA
         sla_timeline = TIMELINE_SLA_MAP.get(effective_priority, "NEXT_WEEKLY_BATCH (T+5)")
 
-        # 4. Generate structured Audit Rationale
         portfolio_id = str(portfolio_record.get("portfolio_id", primary_signal.portfolio_id))
         client_id = str(portfolio_record.get("client_id", primary_signal.client_id))
         risk_cat = str(portfolio_record.get("risk_category", "Unknown"))

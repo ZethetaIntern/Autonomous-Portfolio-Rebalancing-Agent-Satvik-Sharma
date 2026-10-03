@@ -97,27 +97,17 @@ class ShapExplainer:
         """Generates realistic calibrated training dataset representing Indian market portfolio conditions."""
         rng = np.random.default_rng(self.random_state)
 
-        # 0: equity_drift_pct (0.0 to 9.0%)
         equity_drift = rng.uniform(0.0, 9.0, size=n)
-        # 1: vix_level (India VIX typically 10 to 35)
         vix = rng.normal(15.5, 5.0, size=n).clip(10.0, 40.0)
-        # 2: days_since_rebalance (0 to 365)
         days = rng.uniform(0, 365, size=n)
-        # 3: client_risk_score (1 to 5)
         risk = rng.integers(1, 6, size=n).astype(float)
-        # 4: tax_lot_maturity_days (0 to 450)
         tax_days = rng.uniform(0, 450, size=n)
-        # 5: sector_concentration_pct (10.0 to 45.0%)
         sector = rng.uniform(10.0, 45.0, size=n)
 
         X = np.column_stack([equity_drift, vix, days, risk, tax_days, sector])
 
-        # Ground truth policy logic for rebalancing trigger
-        # Threshold: drift >= 3.5% (or 2.5% for conservative)
         drift_trigger = equity_drift >= (5.0 - (risk * 0.5))
-        # Calendar: quarterly/annual cadence
         calendar_trigger = (risk <= 2) & (days >= 90) | (risk >= 3) & (days >= 180)
-        # Event: VIX shock or sector cap breach
         event_trigger = (vix >= 24.0) | (sector >= 30.0)
 
         prob = (
@@ -136,7 +126,6 @@ class ShapExplainer:
         """Computes Tree SHAP attributions, waterfall data structures, and feature rankings."""
         self._ensure_model_trained()
 
-        # Convert to 1D float array
         if isinstance(features, dict):
             feat_vec = np.array([float(features.get(f, 0.0)) for f in self.feature_names], dtype=np.float64)
         else:
@@ -144,16 +133,13 @@ class ShapExplainer:
 
         X_inst = feat_vec.reshape(1, -1)
 
-        # Predict probability
         probs = self.model.predict_proba(X_inst)[0]
         prob_trigger = float(probs[1]) if len(probs) > 1 else float(probs[0])
         decision = "TRIGGER" if prob_trigger >= 0.50 else "NO_TRIGGER"
 
-        # Compute SHAP attributions
         if self.explainer is not None:
             raw_shap = self.explainer.shap_values(X_inst)
             if isinstance(raw_shap, list) and len(raw_shap) > 1:
-                # Binary classification: index 1 represents positive class (TRIGGER)
                 shap_vals = np.asarray(raw_shap[1][0], dtype=np.float64)
             elif isinstance(raw_shap, np.ndarray) and raw_shap.ndim == 3:
                 shap_vals = np.asarray(raw_shap[0, :, 1], dtype=np.float64)
@@ -162,7 +148,6 @@ class ShapExplainer:
             else:
                 shap_vals = np.asarray(raw_shap, dtype=np.float64).flatten()
         else:
-            # Analytical feature gradient fallback
             importances = getattr(self.model, "feature_importances_", np.ones(len(self.feature_names)))
             shap_vals = (feat_vec - np.mean(feat_vec)) * importances * 0.1
 
@@ -170,7 +155,6 @@ class ShapExplainer:
             fname: round(float(val), 4) for fname, val in zip(self.feature_names, shap_vals)
         }
 
-        # Rank features by absolute magnitude
         ranked_drivers = sorted(
             [(fname, float(val)) for fname, val in zip(self.feature_names, shap_vals)],
             key=lambda x: abs(x[1]),

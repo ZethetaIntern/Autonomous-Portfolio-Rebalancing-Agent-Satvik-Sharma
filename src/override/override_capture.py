@@ -70,7 +70,6 @@ class OverrideCapture:
             category: Optional taxonomy category; if omitted, automatically classified from text.
             metadata: Additional contextual metadata.
         """
-        # 1. Resolve reason category
         if category is None:
             resolved_category = self.classifier.classify_reason(justification)
         elif isinstance(category, str):
@@ -81,7 +80,6 @@ class OverrideCapture:
         else:
             resolved_category = category
 
-        # 2. Compute weight deltas: modified - original
         orig_weights = original_proposal.get("optimal_weights", original_proposal.get("proposed_weights", {}))
         mod_weights = modified_proposal.get("optimal_weights", modified_proposal.get("proposed_weights", {}))
         all_keys = set(orig_weights.keys()) | set(mod_weights.keys())

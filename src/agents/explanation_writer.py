@@ -90,7 +90,6 @@ class ExplanationWriterAgent:
             "full_packet": packet,
         }
 
-    # Backward compatibility helper
     def draft_explanations(self, decision_context: Dict[str, Any]) -> Dict[str, str]:
         res = self.execute_task(decision_context)
         return {
@@ -100,5 +99,4 @@ class ExplanationWriterAgent:
         }
 
 
-# Alias for backward compatibility
 ExplanationWriter = ExplanationWriterAgent

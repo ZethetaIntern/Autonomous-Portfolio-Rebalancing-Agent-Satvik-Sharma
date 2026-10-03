@@ -12,16 +12,14 @@ from typing import Any, Dict, List, Optional, Union
 from src.optimisation import TradeOrder
 
 
-# Default Average Daily Volumes (ADV in INR) calibrated to Indian capital markets
 DEFAULT_ASSET_ADV_INR: Dict[str, float] = {
-    "NIFTY_50_EQUITY": 25_000_000_000.0,  # ₹2,500 Crores
-    "G_SEC_BONDS": 15_000_000_000.0,      # ₹1,500 Crores
-    "CORP_BONDS": 1_000_000_000.0,        # ₹100 Crores
-    "GOLD_ETF": 500_000_000.0,            # ₹50 Crores
-    "LIQUID_CASH": 100_000_000_000.0,     # ₹10,000 Crores
+    "NIFTY_50_EQUITY": 25_000_000_000.0,
+    "G_SEC_BONDS": 15_000_000_000.0,
+    "CORP_BONDS": 1_000_000_000.0,
+    "GOLD_ETF": 500_000_000.0,
+    "LIQUID_CASH": 100_000_000_000.0,
 }
 
-# Calibrated annual volatilities from MarketDataSimulator
 DEFAULT_ANNUAL_VOLATILITIES: Dict[str, float] = {
     "NIFTY_50_EQUITY": 0.160,
     "G_SEC_BONDS": 0.045,
@@ -36,13 +34,13 @@ class CostEstimator:
 
     def __init__(
         self,
-        brokerage_rate: float = 0.0005,           # 5 bps
-        stt_rate_equity_delivery: float = 0.001,  # 0.1% on equity delivery
-        gst_rate: float = 0.18,                   # 18% GST on brokerage + exchange
-        stamp_duty_buy: float = 0.00015,          # 1.5 bps on buy trades
-        exchange_turnover_rate: float = 0.0000345,# 0.00345% NSE exchange fee
-        sebi_turnover_rate: float = 0.000001,     # ₹10 per Crore (0.0001%)
-        impact_coefficient: float = 0.60,         # k_i parameter in square-root model
+        brokerage_rate: float = 0.0005,
+        stt_rate_equity_delivery: float = 0.001,
+        gst_rate: float = 0.18,
+        stamp_duty_buy: float = 0.00015,
+        exchange_turnover_rate: float = 0.0000345,
+        sebi_turnover_rate: float = 0.000001,
+        impact_coefficient: float = 0.60,
         asset_adv_map: Optional[Dict[str, float]] = None,
         annual_vols_map: Optional[Dict[str, float]] = None,
     ) -> None:
@@ -103,24 +101,19 @@ class CostEstimator:
                 "total_cost_bps": 0.0,
             }
 
-        # 1. Explicit Statutory & Brokerage Fees
         is_cash = asset == "LIQUID_CASH"
         brokerage = 0.0 if is_cash else val * self.brokerage_rate
         exchange_fee = 0.0 if is_cash else val * self.exchange_rate
         sebi_fee = 0.0 if is_cash else val * self.sebi_rate
         gst = (brokerage + exchange_fee) * self.gst_rate
 
-        # STT applies to equity delivery (both BUY & SELL, or delivery equity turnover)
         is_equity = "EQUITY" in asset.upper() or asset == "NIFTY_50_EQUITY"
         stt = (val * self.stt_rate) if is_equity else 0.0
 
-        # Stamp duty applies to BUY transactions
         stamp_duty = (val * self.stamp_duty_buy) if (action == "BUY" and not is_cash) else 0.0
 
         total_explicit = brokerage + exchange_fee + sebi_fee + gst + stt + stamp_duty
 
-        # 2. Implicit Market Impact via Square-Root Model
-        # Impact_i = k_i * sigma_daily * sqrt(V_trade / ADV)
         if is_cash:
             impact_bps = 0.0
             impact_cost = 0.0
@@ -132,7 +125,6 @@ class CostEstimator:
                 ann_vol = self.vols_map.get(asset, 0.15)
                 daily_vol = ann_vol / math.sqrt(252.0)
 
-            # Square root participation ratio
             participation = val / max(adv, 1.0)
             impact_fraction = self.impact_k * daily_vol * math.sqrt(participation)
             impact_bps = impact_fraction * 10000.0

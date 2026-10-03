@@ -13,7 +13,6 @@ st.set_page_config(page_title="Rebalancing Activity | WealthPilot AI", page_icon
 st.title("⚡ Rebalancing Activity & Execution Queue")
 st.markdown("Live agent decision queue, human-in-the-loop advisor approval portal, and trade execution tracking.")
 
-# Session state initialization for interactive approvals
 if "decision_status" not in st.session_state:
     st.session_state.decision_status = {
         "DEC-2026-0091": "Pending Advisor Approval",
@@ -23,7 +22,6 @@ if "decision_status" not in st.session_state:
         "DEC-2026-0095": "Auto-Executed (Direct Tier)",
     }
 
-# Top KPI ribbon
 q1, q2, q3, q4 = st.columns(4)
 pending_count = sum(1 for s in st.session_state.decision_status.values() if "Pending" in s)
 q1.metric("Live Queue Size", "28 Decisions", f"{pending_count} Require Review")
@@ -33,7 +31,6 @@ q4.metric("Advisor Approval SLA", "4.2 mins", "SEBI Benchmark <15m")
 
 st.divider()
 
-# Tab layout: 1. Live Decision Queue & Approval, 2. Trade Execution Tracking
 tab_queue, tab_execution = st.tabs(["📋 Live Decision Queue & Advisor Approvals", "🚀 Trade Execution Tracking"])
 
 with tab_queue:

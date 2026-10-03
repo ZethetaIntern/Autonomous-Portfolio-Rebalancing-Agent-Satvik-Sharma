@@ -64,13 +64,11 @@ class ComplianceOfficerAgent:
         sector_mappings = context.get("sector_mappings")
         turnover_budget = context.get("turnover_budget")
 
-        # Adapt cash buffer if LIQUID_CASH is not in proposed weights
         if "LIQUID_CASH" not in prop_w:
             self.constraint_manager.min_cash_buffer = 0.0
         else:
             self.constraint_manager.min_cash_buffer = float(context.get("cash_buffer_pct", 0.02))
 
-        # 1. Run Pre-trade constraint verification
         report: PreTradeValidationReport = self.constraint_manager.generate_pre_trade_report(
             portfolio_id=p_id,
             current_weights=curr_w,
@@ -81,12 +79,10 @@ class ComplianceOfficerAgent:
             turnover_budget=turnover_budget,
         )
 
-        # 2. Extract constraint matrix
         matrix = {
             k: v["passed"] for k, v in report.metric_breakdown.items() if isinstance(v, dict) and "passed" in v
         }
 
-        # 3. Create compliance audit record
         audit_record: ComplianceExplanationPayload = self.compliance_explainer.generate_compliance_audit(
             decision_id=context.get("decision_id", f"DEC_{p_id}"),
             portfolio_id=p_id,

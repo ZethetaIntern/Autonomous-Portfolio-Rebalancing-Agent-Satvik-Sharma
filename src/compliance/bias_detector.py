@@ -30,7 +30,7 @@ class BiasMetricSummary:
 class BiasReport:
     """Comprehensive algorithmic fairness and neutrality audit report."""
     overall_bias_detected: bool
-    bias_score: float  # 0.0 (no bias) to 100.0 (severe bias)
+    bias_score: float
     evaluated_decisions_count: int
     flags: List[str] = field(default_factory=list)
     metrics: Dict[str, BiasMetricSummary] = field(default_factory=dict)
@@ -92,14 +92,10 @@ class BiasDetector:
         metrics: Dict[str, BiasMetricSummary] = {}
         recommendations: List[str] = []
 
-        # -----------------------------------------------------------------
-        # 1. RISK-PROFILE FREQUENCY BIAS
-        # -----------------------------------------------------------------
         conservative_count = sum(1 for d in decisions if str(d.get("risk_category", "")).strip().upper() == "CONSERVATIVE")
         aggressive_count = sum(1 for d in decisions if str(d.get("risk_category", "")).strip().upper() == "AGGRESSIVE")
         balanced_count = sum(1 for d in decisions if str(d.get("risk_category", "")).strip().upper() == "BALANCED")
 
-        # Disparity ratio: Conservative / Aggressive frequency relative to population baseline
         cons_rate = conservative_count / max(n_decisions, 1)
         aggr_rate = aggressive_count / max(n_decisions, 1)
         freq_ratio = cons_rate / max(aggr_rate, 1e-4) if aggr_rate > 0 else 1.0
@@ -118,15 +114,11 @@ class BiasDetector:
             description="Compares the rebalancing trigger rate between Conservative and Aggressive portfolios.",
         )
 
-        # -----------------------------------------------------------------
-        # 2. TRANSACTION COST UNDERESTIMATION BIAS
-        # -----------------------------------------------------------------
         cost_deltas = []
         for d in decisions:
             est_cost = float(d.get("estimated_costs_inr", d.get("estimated_cost_inr", d.get("total_costs_inr", 0.0))))
             act_cost = float(d.get("actual_costs_inr", d.get("actual_cost_inr", d.get("realized_cost_inr", est_cost))))
             if est_cost > 0:
-                # Percentage underestimation: (actual - estimated) / estimated * 100
                 cost_deltas.append(((act_cost - est_cost) / est_cost) * 100.0)
 
         mean_cost_error = float(np.mean(cost_deltas)) if cost_deltas else 0.0
@@ -145,10 +137,6 @@ class BiasDetector:
             description="Tests whether optimizer systematically under-projects execution costs and slippage.",
         )
 
-        # -----------------------------------------------------------------
-        # 3. AUM TIER / WEALTH DISPARITY BIAS
-        # -----------------------------------------------------------------
-        # Compare average drift SAD allowed before rebalance between HNIs (> 1 Cr) and Retail (< 25L)
         hni_sads = [float(d.get("sad", 0.05)) for d in decisions if float(d.get("portfolio_aum", d.get("aum_inr", d.get("aum", 1_000_000.0)))) >= 10_000_000.0]
         retail_sads = [float(d.get("sad", 0.05)) for d in decisions if float(d.get("portfolio_aum", d.get("aum_inr", d.get("aum", 1_000_000.0)))) <= 2_500_000.0]
 
@@ -170,10 +158,6 @@ class BiasDetector:
             description="Ensures retail portfolios receive equal monitoring vigilance as large HNI accounts.",
         )
 
-        # -----------------------------------------------------------------
-        # 4. MOMENTUM VS CONTRARIAN BIAS
-        # -----------------------------------------------------------------
-        # Rebalancing should be disciplined mean-reverting (selling overweight, buying underweight)
         contrarian_trades = 0
         total_trades = 0
         for d in decisions:
@@ -181,7 +165,6 @@ class BiasDetector:
             for t in trades:
                 total_trades += 1
                 action = str(t.get("action", "")).upper() if isinstance(t, dict) else str(getattr(t, "action", "")).upper()
-                # If selling an asset that has drifted overweight, it is disciplined contrarian rebalancing
         if total_trades > 0:
             contrarian_pct = (contrarian_trades / total_trades) * 100.0
             is_momentum_biased = contrarian_pct < 85.0
@@ -203,7 +186,6 @@ class BiasDetector:
         )
 
         overall_biased = len(flags) > 0
-        # Bias score: 0 to 100 (each biased dimension adds 25 pts)
         bias_score = min(100.0, sum(25.0 for m in metrics.values() if m.is_biased))
 
         return BiasReport(

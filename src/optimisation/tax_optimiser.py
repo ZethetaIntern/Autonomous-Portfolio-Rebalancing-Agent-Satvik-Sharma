@@ -19,9 +19,9 @@ class TaxOptimiser:
 
     def __init__(
         self,
-        stcg_rate: float = 0.20,              # 20.0% STCG under Section 111A (Budget 2024)
-        ltcg_rate: float = 0.125,             # 12.5% LTCG under Section 112A (Budget 2024)
-        annual_ltcg_exemption: float = 125000.0, # ₹1.25 Lakh Section 112A exemption
+        stcg_rate: float = 0.20,
+        ltcg_rate: float = 0.125,
+        annual_ltcg_exemption: float = 125000.0,
         wash_sale_window_days: int = 30,
         substitute_map: Optional[Dict[str, str]] = None,
     ) -> None:
@@ -53,28 +53,23 @@ class TaxOptimiser:
         ltcg = max(0.0, float(realized_ltcg))
         ltcl = max(0.0, float(realized_ltcl))
 
-        # Step 1: Set off LTCL against LTCG
         ltcl_offset_against_ltcg = min(ltcg, ltcl)
         ltcg_remaining = ltcg - ltcl_offset_against_ltcg
         unabsorbed_ltcl = ltcl - ltcl_offset_against_ltcg
 
-        # Step 2: Set off STCL against STCG first
         stcl_offset_against_stcg = min(stcg, stcl)
         stcg_remaining = stcg - stcl_offset_against_stcg
         remaining_stcl = stcl - stcl_offset_against_stcg
 
-        # Step 3: Set off remaining STCL against remaining LTCG
         stcl_offset_against_ltcg = min(ltcg_remaining, remaining_stcl)
         ltcg_after_stcl = ltcg_remaining - stcl_offset_against_ltcg
         unabsorbed_stcl = remaining_stcl - stcl_offset_against_ltcg
 
-        # Step 4: Apply Section 112A annual exemption (₹1.25 Lakh) to remaining LTCG
         remaining_exemption = max(0.0, self.annual_ltcg_exemption - claimed_ltcg_exemption)
         applied_exemption = min(ltcg_after_stcl, remaining_exemption)
         taxable_ltcg = max(0.0, ltcg_after_stcl - applied_exemption)
         taxable_stcg = max(0.0, stcg_remaining)
 
-        # Step 5: Compute tax
         ltcg_tax = taxable_ltcg * self.ltcg_rate
         stcg_tax = taxable_stcg * self.stcg_rate
         total_tax = ltcg_tax + stcg_tax
@@ -144,7 +139,6 @@ class TaxOptimiser:
             )
 
             if order.action.upper() == "SELL":
-                # Evaluate simulated lot depletion
                 allocations = lot_manager.select_lots_for_sale(
                     portfolio_id=portfolio_id,
                     asset_class=order.asset_class,
@@ -175,13 +169,12 @@ class TaxOptimiser:
                         else:
                             order_stcl += abs(diff)
 
-                # Estimate isolated tax for this ticket (marginal)
                 ticket_tax = self.calculate_tax_liability(
                     realized_stcg=order_stcg,
                     realized_stcl=order_stcl,
                     realized_ltcg=order_ltcg,
                     realized_ltcl=order_ltcl,
-                    claimed_ltcg_exemption=self.annual_ltcg_exemption, # conservative marginal
+                    claimed_ltcg_exemption=self.annual_ltcg_exemption,
                 )["total_tax_inr"]
 
                 order_copy.tax_implication_inr = round(ticket_tax, 2)
@@ -195,7 +188,6 @@ class TaxOptimiser:
                     lot_manager.record_loss_harvest(portfolio_id, order.asset_class, ref_date, order_stcl + order_ltcl)
 
             elif order.action.upper() == "BUY":
-                # Check for wash-sale restriction
                 is_blocked, clear_date = lot_manager.is_in_wash_sale_window(
                     portfolio_id=portfolio_id,
                     asset_class=order.asset_class,
@@ -215,7 +207,6 @@ class TaxOptimiser:
 
             processed_orders.append(order_copy)
 
-        # Aggregate portfolio-level capital gains computation
         aggregate_tax = self.calculate_tax_liability(
             realized_stcg=total_stcg,
             realized_stcl=total_stcl,

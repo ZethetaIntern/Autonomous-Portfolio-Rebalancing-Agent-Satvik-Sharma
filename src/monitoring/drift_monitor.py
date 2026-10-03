@@ -23,7 +23,7 @@ class FlaggedPortfolioItem:
 
     Ordered by negative priority_score so highest priority is popped first.
     """
-    priority_score: float             # Negative score for min-heap implementation of max-heap
+    priority_score: float
     portfolio_id: str = field(compare=False)
     client_id: str = field(compare=False)
     risk_category: str = field(compare=False)
@@ -120,14 +120,11 @@ class DriftMonitor:
         target_cols = [f"target_weight_{ac}" for ac in self.asset_names]
         current_cols = [f"current_weight_{ac}" for ac in self.asset_names]
 
-        # Extract matrices
         curr_mat = portfolios_df[current_cols].to_numpy(dtype=np.float64)
         targ_mat = portfolios_df[target_cols].to_numpy(dtype=np.float64)
 
-        # 1. Vectorized Drift Calculation
         batch_metrics = self.calculator.calculate_vectorized(curr_mat, targ_mat)
 
-        # 2. Vectorized Effective Thresholds
         risk_cats = portfolios_df["risk_category"].to_numpy()
         client_ids = portfolios_df["client_id"].to_numpy()
         custom_deltas = (
@@ -142,7 +139,6 @@ class DriftMonitor:
             custom_deltas=custom_deltas,
         )
 
-        # 3. Identify Breaches
         breach_mask = batch_metrics.max_absolute_drift > effective_thresholds
         breach_indices = np.where(breach_mask)[0]
 
@@ -154,7 +150,6 @@ class DriftMonitor:
             else np.full(n_portfolios, 30)
         )
 
-        # 4. Populate Priority Queue for breached portfolios
         for idx in breach_indices:
             p_id = portfolio_id_arr[idx]
             c_id = client_ids[idx]
@@ -167,7 +162,6 @@ class DriftMonitor:
             sad = float(batch_metrics.sum_absolute_drift[idx])
             days = int(days_arr[idx])
 
-            # Determine breaching assets
             breaching_assets = [
                 self.asset_names[j]
                 for j in range(len(self.asset_names))
@@ -185,7 +179,7 @@ class DriftMonitor:
             urgency = "CRITICAL" if ratio >= 2.0 else ("HIGH" if ratio >= 1.5 else "MEDIUM")
 
             item = FlaggedPortfolioItem(
-                priority_score=-score,  # negative for max-heap
+                priority_score=-score,
                 portfolio_id=str(p_id),
                 client_id=str(c_id),
                 risk_category=str(r_cat),

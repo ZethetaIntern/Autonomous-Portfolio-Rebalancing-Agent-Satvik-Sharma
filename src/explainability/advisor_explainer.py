@@ -65,7 +65,6 @@ class AdvisorExplainer:
         now = datetime.datetime.now(datetime.timezone.utc)
         deadline = now + datetime.timedelta(hours=override_hours)
 
-        # 1. Build allocation table rows
         all_assets = sorted(list(set(list(current_weights.keys()) + list(target_weights.keys()))))
         alloc_table: List[AllocationRow] = []
         for ac in all_assets:
@@ -83,7 +82,6 @@ class AdvisorExplainer:
                 )
             )
 
-        # 2. Executive summary narrative (strictly <= 400 words)
         summary = (
             f"Autonomous Rebalance Order Briefing for Portfolio {portfolio_id} ({risk_category} mandate). "
             f"Triggered by {trigger_category.upper()} protocol. "
@@ -106,7 +104,6 @@ class AdvisorExplainer:
             summary = " ".join(words[: self.max_word_count]) + "..."
             word_count = self.max_word_count
 
-        # 3. Format trade summary
         trade_items = []
         for t in trades:
             if hasattr(t, "asset_class"):

@@ -73,11 +73,9 @@ class StrategyComparator:
                 "tax_alpha_bps": res.get("tax_alpha_bps", 0.0),
             })
 
-        # Sort strategies by Sharpe ratio descending
         ranked_table = sorted(summary_table, key=lambda x: x["sharpe_ratio"], reverse=True)
         winner = ranked_table[0]["strategy"]
 
-        # Benchmarks comparison
         ai_metrics = next((s for s in summary_table if s["strategy"] == "AI_AGENT"), ranked_table[0])
         calendar_metrics = next((s for s in summary_table if s["strategy"] == "CALENDAR_QUARTERLY"), None)
         bh_metrics = next((s for s in summary_table if s["strategy"] == "BUY_AND_HOLD"), None)

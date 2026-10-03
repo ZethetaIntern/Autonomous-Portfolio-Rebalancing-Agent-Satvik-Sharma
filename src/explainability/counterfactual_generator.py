@@ -33,7 +33,6 @@ class CounterfactualGenerator:
             "tax_lot_maturity_days": (0.0, 500.0),
             "sector_concentration_pct": (5.0, 60.0),
         }
-        # Immutable features that cannot be dynamically altered in counterfactual simulations
         self.immutable_features = {"client_risk_score"}
 
     def generate_counterfactual(
@@ -67,10 +66,8 @@ class CounterfactualGenerator:
         target_is_no_trigger = target_decision == "NO_TRIGGER"
         target_threshold = 0.45 if target_is_no_trigger else 0.55
 
-        # 1. First attempt: Single-feature bisection search (simplest and most intuitive explanation)
         single_feature_results: List[Dict[str, Any]] = []
 
-        # Standard deviations for feature normalization in distance metric
         scales = np.array([2.5, 6.0, 60.0, 1.0, 90.0, 6.0], dtype=np.float64)
 
         for i, fname in enumerate(self.feature_names):
@@ -81,7 +78,6 @@ class CounterfactualGenerator:
             best_cf_val = None
             min_dist = float("inf")
 
-            # Grid search along feature dimension
             test_vals = np.linspace(low_b, high_b, 100)
             for val in test_vals:
                 cand = orig_vec.copy()
@@ -105,7 +101,6 @@ class CounterfactualGenerator:
                     "norm_dist": min_dist,
                 })
 
-        # Sort single-feature candidates by minimal normalized distance
         single_feature_results.sort(key=lambda x: x["norm_dist"])
 
         if single_feature_results:
@@ -140,7 +135,6 @@ class CounterfactualGenerator:
             l2_dist = round(float(abs(delta)), 4)
 
         else:
-            # Multi-feature optimization fallback using scipy
             def objective(delta_vec):
                 return np.sum((delta_vec / scales) ** 2)
 

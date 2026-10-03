@@ -39,7 +39,6 @@ class FullExplanationPacket(BaseModel):
     counterfactual_scenario: Dict[str, Any]
 
 
-# 9-Template Matrix definitions for LangChain Prompt Templates
 EXPLANATION_PROMPT_TEMPLATES: Dict[str, str] = {
     "CLIENT_THRESHOLD": (
         "You are an empathetic personal wealth advisor explaining an automatic portfolio rebalance to a retail client.\n"
@@ -118,7 +117,6 @@ class ExplanationGenerator:
         self.compliance_explainer = compliance_explainer or ComplianceExplainer()
         self.llm = llm
 
-        # LangChain Parsers
         self.client_parser = PydanticOutputParser(pydantic_object=ClientExplanationPayload)
         self.advisor_parser = PydanticOutputParser(pydantic_object=AdvisorExplanationPayload)
         self.compliance_parser = PydanticOutputParser(pydantic_object=ComplianceExplanationPayload)
@@ -185,7 +183,6 @@ class ExplanationGenerator:
         })
         sebi_compliant = bool(context.get("sebi_compliant", True))
 
-        # 1. Compute surrogate explainability: SHAP, LIME, Counterfactuals
         features = context.get("explainability_features", {
             "equity_drift_pct": float(sad * 50.0),
             "vix_level": 16.5,
@@ -199,7 +196,6 @@ class ExplanationGenerator:
         lime_res = self.lime_explainer.explain_instance(features)
         cf_res = self.counterfactual_generator.generate_counterfactual(features)
 
-        # 2. Generate Tier 1: Client Plain English Explanation (Grade <= 8.0, <= 200 words)
         primary_asset = "NIFTY_50_EQUITY"
         curr_eq = curr_w.get(primary_asset, 0.50) * 100.0
         targ_eq = targ_w.get(primary_asset, 0.50) * 100.0
@@ -218,7 +214,6 @@ class ExplanationGenerator:
             client_goal=f"{risk_cat} Wealth Mandate",
         )
 
-        # 3. Generate Tier 2: Advisor Quantitative Dossier (<= 400 words)
         advisor_payload = self.advisor_explainer.generate_dossier(
             portfolio_id=portfolio_id,
             decision_id=decision_id,
@@ -235,7 +230,6 @@ class ExplanationGenerator:
             tax_shield_inr=tax_shield_inr,
         )
 
-        # 4. Generate Tier 3: Compliance Immutable Audit Log
         compliance_payload = self.compliance_explainer.generate_compliance_audit(
             decision_id=decision_id,
             portfolio_id=portfolio_id,

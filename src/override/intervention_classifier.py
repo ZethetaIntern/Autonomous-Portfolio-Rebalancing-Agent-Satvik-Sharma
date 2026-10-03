@@ -62,7 +62,7 @@ class InterventionClassifier:
         self,
         high_turnover_threshold: float = 0.15,
         medium_turnover_threshold: float = 0.05,
-        large_trade_value_inr: float = 5_000_000.0,  # 50 Lakhs
+        large_trade_value_inr: float = 5_000_000.0,
         high_confidence_threshold: float = 0.90,
         medium_confidence_threshold: float = 0.75,
         low_confidence_threshold: float = 0.50,
@@ -103,8 +103,6 @@ class InterventionClassifier:
             "model_conflict": model_conflict,
         }
 
-        # Tier 4: ESCALATION
-        # Triggered by compliance failure, constraint breaches, severe drift > 15%, model conflict, or low confidence < 0.50
         if (
             not compliance_passed
             or len(breaches) > 0
@@ -134,8 +132,6 @@ class InterventionClassifier:
                 factors=factors,
             )
 
-        # Tier 3: APPROVAL_REQUIRED
-        # Triggered by turnover > 15%, trade value > 50L INR, confidence < 0.75, or explicit client restrictions
         if (
             turnover > self.high_turnover
             or trade_value_inr >= self.large_trade_value
@@ -162,9 +158,6 @@ class InterventionClassifier:
                 factors=factors,
             )
 
-        # Tier 2: ADVISORY
-        # Triggered by turnover between 5% and 15% or confidence between 0.75 and 0.90
-        # Auto-executes after a 4 to 24 hour waiting period unless cancelled/modified
         if turnover > self.medium_turnover or agent_confidence < self.high_conf:
             waiting_hours = 24.0 if turnover > 0.10 else 4.0
             rationale = (
@@ -181,8 +174,6 @@ class InterventionClassifier:
                 factors=factors,
             )
 
-        # Tier 1: INFORMATIONAL
-        # Low turnover <= 5%, high confidence >= 0.90, routine drift correction
         return InterventionClassificationResult(
             tier=InterventionTier.INFORMATIONAL,
             waiting_period_hours=0.0,
@@ -210,6 +201,5 @@ class InterventionClassifier:
             return InterventionCategory.POLICY_EXCEPTION
         return InterventionCategory.OTHER
 
-    # Backward compatibility alias
     def classify(self, reason_text: str) -> InterventionCategory:
         return self.classify_reason(reason_text)

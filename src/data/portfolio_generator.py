@@ -14,7 +14,6 @@ from src.data.client_profile_generator import ClientProfileGenerator, RISK_CATEG
 from src.data.market_data_simulator import ASSET_CLASSES, MarketDataSimulator
 
 
-# Strategic Asset Allocation Targets per Risk Category
 DEFAULT_SAA_WEIGHTS: Dict[str, Dict[str, float]] = {
     "Ultra-Conservative": {
         "NIFTY_50_EQUITY": 0.10,
@@ -71,7 +70,6 @@ class PortfolioGenerator:
         self.client_gen = ClientProfileGenerator(seed=seed)
         self.market_sim = MarketDataSimulator(seed=seed)
 
-        # Pre-build lookup matrices for target weights
         self.risk_cat_to_idx = {cat: i for i, cat in enumerate(RISK_CATEGORIES)}
         self.saa_matrix = np.zeros((len(RISK_CATEGORIES), self.n_assets), dtype=np.float64)
         for cat_name, idx in self.risk_cat_to_idx.items():
@@ -94,37 +92,24 @@ class PortfolioGenerator:
         Returns:
             DataFrame containing portfolio IDs, client metadata, target & current weights, and values.
         """
-        # 1. Generate client profiles
         clients_df = self.client_gen.generate_profiles(n_clients=n_portfolios)
 
-        # 2. Map risk categories to target weight vectors
         cat_indices = np.array([self.risk_cat_to_idx[c] for c in clients_df["risk_category"]])
-        target_weights = self.saa_matrix[cat_indices]  # Shape: (N, 5)
+        target_weights = self.saa_matrix[cat_indices]
 
-        # 3. Simulate realistic drift
-        # Drift reflects time passage, differential asset returns, and cash inflows
-        # Add random perturbation with zero mean
         drift_noise = self.rng.normal(0.0, drift_intensity, size=(n_portfolios, self.n_assets))
 
         if include_drift_shocks:
-            # Equities have had a strong run in ~30% of portfolios (bull drift)
-            # and a correction in ~15% of portfolios (bear drift)
             market_regimes = self.rng.choice([-0.05, 0.0, 0.06], size=(n_portfolios, 1), p=[0.20, 0.50, 0.30])
-            # Equity is index 0
             drift_noise[:, 0] += market_regimes.squeeze()
 
-        # Raw current weights before normalization
         raw_current = target_weights + drift_noise
-        # Keep non-negative (no short positions allowed in vanilla wealth management)
         raw_current = np.clip(raw_current, 0.001, 0.999)
-        # Normalize each row to sum to 1.0
         row_sums = raw_current.sum(axis=1, keepdims=True)
         current_weights = raw_current / row_sums
 
-        # 4. Generate metadata (last rebalance days, AUM)
         last_rebalance_days = self.rng.integers(15, 365, size=n_portfolios)
 
-        # Construct DataFrame
         portfolio_ids = [f"WP-PF-{i+1:06d}" for i in range(n_portfolios)]
         df_dict = {
             "portfolio_id": portfolio_ids,
@@ -139,7 +124,6 @@ class PortfolioGenerator:
             "days_since_rebalance": last_rebalance_days,
         }
 
-        # Add target and current weights for each asset class
         for j, ac in enumerate(self.asset_classes):
             df_dict[f"target_weight_{ac}"] = target_weights[:, j]
             df_dict[f"current_weight_{ac}"] = current_weights[:, j]

@@ -13,7 +13,6 @@ st.set_page_config(page_title="Portfolio Overview | WealthPilot AI", page_icon="
 st.title("📊 Portfolio Universe & Drift Heatmap")
 st.markdown("Real-time monitoring of **50,000 active portfolios** across risk tiers, asset classes, and individual holding deviations.")
 
-# Summary Metrics Ribbon
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Supervised Portfolios", "50,000", "100% Vector Monitored")
 col2.metric("Total AUM", "₹14,250.80 Cr", "Avg ₹28.50 L")
@@ -23,7 +22,6 @@ col5.metric("Critical Drift (>10%)", "842 (1.68%)", "Priority 1 Rebalance", delt
 
 st.divider()
 
-# Section 1: Aggregate Drift Heatmap
 st.subheader("🔥 Aggregate Asset Class Drift Heatmap across Risk Bands")
 st.caption("Average percentage point drift [Current Weight - Target Weight] across all 50,000 portfolios.")
 
@@ -37,13 +35,12 @@ asset_classes = [
     "Liquid Cash",
 ]
 
-# Calibrated drift matrix (percentage points)
 drift_matrix = np.array([
-    [+1.8, +0.6, -1.4, -0.7, +0.2, -0.5],   # Conservative
-    [+3.1, +1.2, -2.1, -1.5, -0.3, -0.4],   # Mod Conservative
-    [+5.4, +2.8, -3.8, -2.6, -0.6, -1.2],   # Balanced (Equity Rally drift)
-    [+6.9, +4.1, -4.5, -3.2, -1.1, -2.2],   # Growth
-    [+8.4, +5.5, -5.2, -3.9, -1.4, -3.4],   # Aggressive
+    [+1.8, +0.6, -1.4, -0.7, +0.2, -0.5],
+    [+3.1, +1.2, -2.1, -1.5, -0.3, -0.4],
+    [+5.4, +2.8, -3.8, -2.6, -0.6, -1.2],
+    [+6.9, +4.1, -4.5, -3.2, -1.1, -2.2],
+    [+8.4, +5.5, -5.2, -3.9, -1.4, -3.4],
 ])
 
 heatmap_fig = go.Figure(data=go.Heatmap(
@@ -69,7 +66,6 @@ st.plotly_chart(heatmap_fig, use_container_width=True)
 
 st.divider()
 
-# Section 2: Portfolio Drill-Down Inspector
 st.subheader("🔍 Individual Portfolio Holdings Drill-Down")
 
 c_filter1, c_filter2 = st.columns([1, 2])
@@ -84,7 +80,6 @@ with c_filter1:
     selected_item = st.selectbox("Select Portfolio to Inspect:", sample_ids)
     selected_id = selected_item.split()[0]
 
-    # Pre-canned mock profiles
     portfolio_metadata = {
         "PORT-00104": {
             "name": "Arjun Mehta",
@@ -184,7 +179,6 @@ with c_filter2:
     )
     st.plotly_chart(fig_bars, use_container_width=True)
 
-# Granular Holding Details Table
 st.markdown("#### Granular Asset Drift & Proposed Action")
 table_data = []
 for i, asset in enumerate(asset_classes):

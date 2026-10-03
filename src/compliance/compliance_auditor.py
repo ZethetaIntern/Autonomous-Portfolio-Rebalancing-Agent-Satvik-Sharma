@@ -39,7 +39,7 @@ class AuditRunResult:
     passed_count: int
     failed_count: int
     audit_pass_rate_pct: float
-    overall_verdict: str  # "AUDIT_PASSED" or "AUDIT_FAILED"
+    overall_verdict: str
     average_explanation_score: float
     trigger_stratification: Dict[str, StratifiedSampleBreakdown]
     risk_stratification: Dict[str, StratifiedSampleBreakdown]
@@ -103,7 +103,6 @@ class ComplianceAuditor:
             return list(decisions)
 
         rng = np.random.default_rng(seed)
-        # Group by (trigger_category, risk_category)
         strata: Dict[tuple, List[Dict[str, Any]]] = {}
         for d in decisions:
             trig = str(d.get("trigger_category", "THRESHOLD")).upper()
@@ -120,7 +119,6 @@ class ComplianceAuditor:
             for i in idx:
                 sampled.append(group[i])
 
-        # If sample underfilled due to small strata, top up randomly
         if len(sampled) < sample_size:
             remaining = [d for d in decisions if d not in sampled]
             needed = min(len(remaining), sample_size - len(sampled))
@@ -158,11 +156,9 @@ class ComplianceAuditor:
             trigger_stats[trig]["total"] += 1
             risk_stats[risk]["total"] += 1
 
-            # 1. Constraint check
             comp_report = d.get("compliance_report", {})
             comp_pass = comp_report.get("status") in ("PASS", "APPROVED") if comp_report else bool(d.get("sebi_compliant", True))
 
-            # 2. Scorecard check
             exp_packet = d.get("explanation_packet", d)
             score_res: ExplanationScorecardResult = self.scorecard.score_explanation_packet(
                 explanation_packet=exp_packet,
@@ -219,7 +215,6 @@ class ComplianceAuditor:
         now_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
         audit_id = f"AUDIT-{quarter}-{int(datetime.datetime.now().timestamp())}"
 
-        # Hash entire audit payload for immutability
         hash_payload = f"{audit_id}:{now_utc}:{pass_rate}:{total_count}:{overall_verdict}"
         sig_hash = hashlib.sha256(hash_payload.encode("utf-8")).hexdigest()
 

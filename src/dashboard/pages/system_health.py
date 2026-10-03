@@ -14,13 +14,11 @@ st.set_page_config(page_title="System Health | WealthPilot AI", page_icon="🛡�
 st.title("🛡️ System Health & Operational Telemetry")
 st.markdown("Real-time monitoring of agent throughput, vector scanning latency, error rates, and multi-tier circuit breakers.")
 
-# Session state for Kill Switch
 if "kill_switch_state" not in st.session_state:
     st.session_state.kill_switch_state = "NORMAL"
 if "kill_switch_reason" not in st.session_state:
     st.session_state.kill_switch_reason = "System healthy. All safety metrics within operational thresholds."
 
-# Top telemetry cards
 h1, h2, h3, h4 = st.columns(4)
 h1.metric("Universe Scan SLA", "0.84 sec", "50,000 Portfolios (Benchmark <5.0s)")
 h2.metric("Pipeline P99 Latency", "142 ms", "-18 ms vs SLA target", delta_color="inverse")
@@ -108,7 +106,6 @@ with col_controls:
 
 st.divider()
 
-# System Audit Log
 st.subheader("📜 System Telemetry & Heartbeat Log")
 audit_records = [
     {"Timestamp (UTC)": "2026-03-31 06:55:00", "Component": "VectorScanEngine", "Level": "INFO", "Message": "50,000 portfolios scanned. 1,842 drift events queued in 0.84s."},

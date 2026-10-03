@@ -18,13 +18,13 @@ from typing import Any, Dict, List, Optional
 class ExplanationScorecardResult:
     """Detailed multi-dimensional explanation evaluation scorecard."""
     decision_id: str
-    composite_score: float  # 0.0 to 100.0
-    grade: str              # "A", "B", "C", "REJECTED"
+    composite_score: float
+    grade: str
     is_compliant: bool
-    accuracy_score: float   # 0.0 to 25.0
-    completeness_score: float # 0.0 to 25.0
-    readability_score: float  # 0.0 to 25.0
-    regulatory_score: float   # 0.0 to 25.0
+    accuracy_score: float
+    completeness_score: float
+    readability_score: float
+    regulatory_score: float
     deficiencies: List[str] = field(default_factory=list)
     dimension_breakdown: Dict[str, Any] = field(default_factory=dict)
 
@@ -70,13 +70,9 @@ class ExplainabilityScorecard:
         advisor_dos = explanation_packet.get("advisor_dossier", {})
         comp_audit = explanation_packet.get("compliance_audit", {})
 
-        # -------------------------------------------------------------
-        # 1. ACCURACY SCORE (0 - 25 pts)
-        # -------------------------------------------------------------
         acc_pts = 25.0
         acc_details = {}
 
-        # Check costs reported vs actual
         reported_costs = client_exp.get("cost_transparency", {}).get("total_estimated_costs_inr")
         actual_costs = ctx.get("total_costs_inr")
         if reported_costs is not None and actual_costs is not None:
@@ -87,7 +83,6 @@ class ExplainabilityScorecard:
         else:
             acc_details["costs_verified"] = True
 
-        # Check reported drift vs actual
         reported_drift = client_exp.get("cost_transparency", {}).get("current_equity_pct")
         actual_eq_pct = ctx.get("current_equity_pct")
         if reported_drift is not None and actual_eq_pct is not None:
@@ -97,13 +92,9 @@ class ExplainabilityScorecard:
 
         accuracy_score = max(0.0, acc_pts)
 
-        # -------------------------------------------------------------
-        # 2. COMPLETENESS SCORE (0 - 25 pts)
-        # -------------------------------------------------------------
         comp_pts = 0.0
         comp_details = {}
 
-        # Client elements (up to 10 pts)
         has_headline = bool(client_exp.get("headline"))
         has_narrative = bool(client_exp.get("narrative") or client_exp.get("plain_english_summary"))
         has_goal = bool(client_exp.get("goal_relevance"))
@@ -115,7 +106,6 @@ class ExplainabilityScorecard:
         if client_comp_cnt < 4:
             deficiencies.append(f"Client explanation missing {4 - client_comp_cnt} required disclosure sections")
 
-        # Advisor elements (up to 8 pts)
         has_adv_summary = bool(advisor_dos.get("executive_summary"))
         has_adv_drift = "sad" in advisor_dos or "drift_metrics" in advisor_dos
         has_adv_alternatives = bool(advisor_dos.get("counterfactual_alternatives") or advisor_dos.get("alternative_policies"))
@@ -123,7 +113,6 @@ class ExplainabilityScorecard:
         comp_pts += (adv_comp_cnt / 3.0) * 8.0
         comp_details["advisor_fields_present"] = adv_comp_cnt
 
-        # Compliance elements (up to 7 pts)
         has_matrix = bool(comp_audit.get("constraint_verification_matrix"))
         has_hash = bool(comp_audit.get("digital_signature_hash"))
         comp_pts += (sum([has_matrix, has_hash]) / 2.0) * 7.0
@@ -131,9 +120,6 @@ class ExplainabilityScorecard:
 
         completeness_score = min(25.0, round(comp_pts, 2))
 
-        # -------------------------------------------------------------
-        # 3. READABILITY SCORE (0 - 25 pts)
-        # -------------------------------------------------------------
         read_pts = 25.0
         client_grade = float(client_exp.get("readability_grade", 7.5))
         client_words = int(client_exp.get("word_count", 120))
@@ -154,9 +140,6 @@ class ExplainabilityScorecard:
 
         readability_score = max(0.0, round(read_pts, 2))
 
-        # -------------------------------------------------------------
-        # 4. REGULATORY SUFFICIENCY SCORE (0 - 25 pts)
-        # -------------------------------------------------------------
         reg_pts = 25.0
         sebi_cert = comp_audit.get("sebi_compliance_certified", comp_audit.get("sebi_compliant", True))
         circular = str(comp_audit.get("regulatory_circular", ""))
@@ -176,9 +159,6 @@ class ExplainabilityScorecard:
 
         regulatory_score = max(0.0, round(reg_pts, 2))
 
-        # -------------------------------------------------------------
-        # COMPOSITE SCORE & GRADE
-        # -------------------------------------------------------------
         composite = round(accuracy_score + completeness_score + readability_score + regulatory_score, 1)
 
         if composite >= 90.0:

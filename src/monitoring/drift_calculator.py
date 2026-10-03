@@ -19,11 +19,11 @@ import pandas as pd
 @dataclass(frozen=True)
 class DriftMetricsBatch:
     """Vectorized result container for a batch of portfolio drift calculations."""
-    absolute_drift: np.ndarray       # Shape: (N, K)
-    max_absolute_drift: np.ndarray   # Shape: (N,)
-    sum_absolute_drift: np.ndarray   # Shape: (N,) - SAD
-    rmsd: np.ndarray                 # Shape: (N,) - Root Mean Square Drift
-    tracking_error: np.ndarray       # Shape: (N,) - Annualized Predicted Tracking Error
+    absolute_drift: np.ndarray
+    max_absolute_drift: np.ndarray
+    sum_absolute_drift: np.ndarray
+    rmsd: np.ndarray
+    tracking_error: np.ndarray
     computation_time_seconds: float
     portfolio_count: int
 
@@ -43,7 +43,6 @@ class DriftCalculator:
             asset_names: Optional list of asset class names.
         """
         if asset_covariance_annual is None:
-            # Default to standard Indian 5-asset covariance if not passed
             vols = np.array([0.160, 0.045, 0.055, 0.140, 0.005], dtype=np.float64)
             corr = np.array(
                 [
@@ -85,7 +84,6 @@ class DriftCalculator:
         sad = float(np.sum(abs_drift))
         rmsd = float(np.sqrt(np.mean(delta_w ** 2)))
 
-        # Quadratic form: Δw^T * Σ * Δw
         variance = float(delta_w @ self.cov @ delta_w)
         tracking_error = float(np.sqrt(max(0.0, variance)))
 
@@ -129,26 +127,17 @@ class DriftCalculator:
                 f"Asset dimension mismatch: weights have {k_assets} assets, covariance matrix has {self.n_assets}"
             )
 
-        # 1. Delta weights: (N, K)
         delta_w = c_mat - t_mat
 
-        # 2. Absolute drift per asset: (N, K)
         abs_drift = np.abs(delta_w)
 
-        # 3. Max absolute drift per portfolio: (N,)
         max_abs_drift = np.max(abs_drift, axis=1)
 
-        # 4. Sum of Absolute Drift (SAD): (N,)
         sad = np.sum(abs_drift, axis=1)
 
-        # 5. Root Mean Square Drift (RMSD): (N,)
         rmsd = np.sqrt(np.mean(delta_w ** 2, axis=1))
 
-        # 6. Vectorized Predicted Tracking Error: (N,)
-        # delta_w @ cov yields (N, K)
-        # element-wise product with delta_w and row sum gives Δw_i^T * Σ * Δw_i
         var_vector = np.sum((delta_w @ self.cov) * delta_w, axis=1)
-        # Numerical protection against tiny floating point negatives
         tracking_error = np.sqrt(np.maximum(0.0, var_vector))
 
         elapsed = time.perf_counter() - start_time

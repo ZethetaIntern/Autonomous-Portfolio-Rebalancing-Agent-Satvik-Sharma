@@ -65,7 +65,6 @@ class ComplianceExplainer:
         """Constructs an auditable, cryptographically verifiable compliance record."""
         now_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        # 1. Clean input & output snapshots
         trade_items = []
         for t in trades:
             if hasattr(t, "asset_class"):
@@ -98,7 +97,6 @@ class ComplianceExplainer:
             "counterfactual_analysis": counterfactual_evidence or {},
         }
 
-        # 2. Compute canonical SHA-256 digital signature over decision payload
         canonical_dict = {
             "decision_id": decision_id,
             "timestamp_utc": now_utc,

@@ -44,7 +44,6 @@ class EventTriggerEvaluator(BaseTriggerEvaluator):
         client_id = str(portfolio_record.get("client_id", "UNKNOWN"))
         aum = float(portfolio_record.get("aum_inr", 1_000_000.0))
 
-        # 1. Market Shock / Crash Evaluation
         market_drawdowns = ctx.get("market_drawdowns", {})
         equity_drawdown = float(market_drawdowns.get("NIFTY_50_EQUITY", 0.0))
         if abs(equity_drawdown) >= self.crash_threshold and equity_drawdown < 0:
@@ -66,7 +65,6 @@ class EventTriggerEvaluator(BaseTriggerEvaluator):
                 )
             )
 
-        # 2. Client Life Event Evaluation
         life_event = str(portfolio_record.get("life_event", "NONE")).upper()
         if life_event in ("RETIREMENT_PLANNED", "RETIREMENT"):
             signals.append(
@@ -97,8 +95,6 @@ class EventTriggerEvaluator(BaseTriggerEvaluator):
                 )
             )
 
-        # 3. March Financial Year-End Tax Harvesting Window
-        # Active in March (month 3) or if explicitly passed in context
         current_month = ctx.get("current_month", datetime.utcnow().month)
         tax_sensitive = bool(portfolio_record.get("tax_sensitive", True))
 
@@ -121,7 +117,6 @@ class EventTriggerEvaluator(BaseTriggerEvaluator):
                 )
             )
 
-        # 4. Regulatory Mandate Shift
         if ctx.get("regulatory_reclassification_active", False):
             signals.append(
                 TriggerSignal(

@@ -36,15 +36,11 @@ class ScenarioRunner:
         self.optimiser = PortfolioOptimiser()
         self.tax_optimiser = TaxOptimiser()
 
-    # =========================================================================
-    # SCENARIO 1: NORMAL DRIFT (3-Month Equity Rally 12-15%)
-    # =========================================================================
     def run_scenario_1_normal_drift(self, n_days: int = 63, rally_pct: float = 0.14) -> Dict[str, Any]:
         """Scenario 1: 3-month equity rally (14% growth) testing cost-efficient threshold rebalancing."""
         np.random.seed(101)
         dates = pd.date_range(start="2025-01-01", periods=n_days, freq="B")
 
-        # Equity trends up with daily drift totaling ~14%
         daily_growth = (1.0 + rally_pct) ** (1.0 / n_days) - 1.0
         equity_noise = np.random.normal(daily_growth, 0.007, size=n_days)
         bond_noise = np.random.normal(0.0002, 0.002, size=n_days)
@@ -60,7 +56,6 @@ class ScenarioRunner:
             "LIQUID_CASH": cash_prices,
         }, index=dates)
 
-        # Run AI Agent simulation
         sim_res = self.engine.run_simulation(
             price_history=price_df,
             target_weights={"NIFTY_50_EQUITY": 0.50, "G_SEC_BONDS": 0.40, "LIQUID_CASH": 0.10},
@@ -86,9 +81,6 @@ class ScenarioRunner:
             "details": sim_res,
         }
 
-    # =========================================================================
-    # SCENARIO 2: MARKET CRASH (Sudden 22% Equity Crash over 5 Sessions)
-    # =========================================================================
     def run_scenario_2_market_crash(self) -> Dict[str, Any]:
         """Scenario 2: Sudden 22% equity crash over 5 sessions testing crisis prioritization and kill switches."""
         np.random.seed(202)
@@ -101,10 +93,9 @@ class ScenarioRunner:
 
         for d in range(1, n_days):
             if 5 <= d < 10:
-                # 5-session violent crash (~ -4.5% daily = -22% cumulative drop)
                 ret_n = -0.048
-                ret_b = 0.003  # flight to sovereign bonds
-                vix = 44.0 + (d - 5) * 6.0  # VIX spikes to 44 - 68
+                ret_b = 0.003
+                vix = 44.0 + (d - 5) * 6.0
             else:
                 ret_n = np.random.normal(0.0004, 0.006)
                 ret_b = np.random.normal(0.0001, 0.002)
@@ -122,7 +113,6 @@ class ScenarioRunner:
         peak_vix = max(vix_series)
         crash_drop_pct = ((nifty_prices[9] - nifty_prices[4]) / nifty_prices[4]) * 100.0
 
-        # Evaluate circuit breaker kill-switch trip
         cb_state, cb_reason = self.kill_switch.evaluate_automated_triggers(
             vix_level=peak_vix,
             daily_market_return=-0.048,
@@ -130,7 +120,6 @@ class ScenarioRunner:
 
         kill_switch_tripped = (cb_state == CircuitBreakerState.HALTED)
 
-        # Deactivate halt so downstream operations continue cleanly
         if kill_switch_tripped:
             self.kill_switch.deactivate_global_halt(reset_by="SCENARIO_RUNNER", justification="Scenario 2 completed")
 
@@ -152,17 +141,12 @@ class ScenarioRunner:
             ),
         }
 
-    # =========================================================================
-    # SCENARIO 3: SECTOR ROTATION (Growth to Value Intra-Equity Rebalancing)
-    # =========================================================================
     def run_scenario_3_sector_rotation(self) -> Dict[str, Any]:
         """Scenario 3: Growth-to-value sector rotation testing intra-equity rebalancing without overall allocation drift."""
-        # Current portfolio has overall equity at 50%, but internal sector weights drift:
-        # IT Growth drops 12%, Banking/Infra Value surges 14%
         current_weights = {
-            "IT_GROWTH_EQUITY": 0.35,      # Overweight target is 0.25 -> drifted to 0.35 earlier
-            "BANKING_VALUE_EQUITY": 0.15,  # Underweight target is 0.25 -> drifted to 0.15
-            "G_SEC_BONDS": 0.50,          # Exactly on target
+            "IT_GROWTH_EQUITY": 0.35,
+            "BANKING_VALUE_EQUITY": 0.15,
+            "G_SEC_BONDS": 0.50,
         }
         target_weights = {
             "IT_GROWTH_EQUITY": 0.25,
@@ -170,17 +154,14 @@ class ScenarioRunner:
             "G_SEC_BONDS": 0.50,
         }
 
-        # Overall equity is 0.35 + 0.15 = 0.50 (zero overall equity drift)
         overall_equity_current = current_weights["IT_GROWTH_EQUITY"] + current_weights["BANKING_VALUE_EQUITY"]
         overall_equity_target = target_weights["IT_GROWTH_EQUITY"] + target_weights["BANKING_VALUE_EQUITY"]
         overall_equity_drift = abs(overall_equity_current - overall_equity_target)
 
-        # Internal sector SAD
         intra_equity_sad = abs(current_weights["IT_GROWTH_EQUITY"] - target_weights["IT_GROWTH_EQUITY"]) + abs(
             current_weights["BANKING_VALUE_EQUITY"] - target_weights["BANKING_VALUE_EQUITY"]
         )
 
-        # Solve QP rebalancing
         optimiser = PortfolioOptimiser(asset_names=list(current_weights.keys()))
         opt_res = optimiser.optimize_allocation(
             current_weights=current_weights,
@@ -209,24 +190,19 @@ class ScenarioRunner:
             ),
         }
 
-    # =========================================================================
-    # SCENARIO 4: REGULATORY EVENT (SEBI Circular Capping International Equity at 15%)
-    # =========================================================================
     def run_scenario_4_regulatory_event(self) -> Dict[str, Any]:
         """Scenario 4: Simulated SEBI circular capping international equity allocation at 15%."""
-        # Non-compliant portfolio: International Equity currently at 25% (> 15% statutory cap)
         current_weights = {
             "DOMESTIC_EQUITY": 0.45,
-            "INTERNATIONAL_EQUITY_ETF": 0.25,  # Exceeds new 15% SEBI mandate
+            "INTERNATIONAL_EQUITY_ETF": 0.25,
             "G_SEC_BONDS": 0.30,
         }
         target_weights = {
             "DOMESTIC_EQUITY": 0.55,
-            "INTERNATIONAL_EQUITY_ETF": 0.15,  # Truncated to 15%
+            "INTERNATIONAL_EQUITY_ETF": 0.15,
             "G_SEC_BONDS": 0.30,
         }
 
-        # Solve constrained rebalancing with hard issuer/sub-asset cap at 15%
         optimiser = PortfolioOptimiser(asset_names=list(current_weights.keys()))
         opt_res = optimiser.optimize_allocation(
             current_weights=current_weights,
@@ -254,27 +230,22 @@ class ScenarioRunner:
             ),
         }
 
-    # =========================================================================
-    # SCENARIO 5: TAX HARVESTING (March FY-End Tax-Loss Harvesting Scan)
-    # =========================================================================
     def run_scenario_5_tax_harvesting(self) -> Dict[str, Any]:
         """Scenario 5: March FY-end tax-loss harvesting scan verifying loss realization & wash-sale avoidance."""
         p_id = "PORT_TAX_01"
         lot_mgr = TaxLotManager(wash_sale_window_days=30)
 
-        # Register loss-making lot acquired 4 months ago (STCL)
         loss_lot = TaxLot(
             lot_id="LOT-HCL-01",
             portfolio_id=p_id,
             asset_class="HCL_TECH_EQUITY",
             quantity=500.0,
             cost_per_share=1600.0,
-            current_price=1350.0,  # Unsold loss = (1350 - 1600) * 500 = -Rs. 1,25,000
+            current_price=1350.0,
             acquisition_date=datetime.date(2024, 11, 15),
         )
         lot_mgr.add_lot(loss_lot)
 
-        # Candidate order: sell HCL Tech to harvest loss
         sell_order = TradeOrder(
             portfolio_id=p_id,
             asset_class="HCL_TECH_EQUITY",
@@ -284,7 +255,6 @@ class ScenarioRunner:
             trade_value_inr=500.0 * 1350.0,
         )
 
-        # Wash-sale replacement order: buy proxy IT ETF
         buy_order = TradeOrder(
             portfolio_id=p_id,
             asset_class="HCL_TECH_EQUITY",
@@ -324,9 +294,6 @@ class ScenarioRunner:
             ),
         }
 
-    # =========================================================================
-    # UNIFIED ALL-SCENARIO SUITE RUNNER
-    # =========================================================================
     def run_all_scenarios(self) -> Dict[str, Any]:
         """Runs the complete suite of all 5 mandatory market scenarios."""
         s1 = self.run_scenario_1_normal_drift()
@@ -347,7 +314,6 @@ class ScenarioRunner:
             "scenarios": {s["scenario_id"]: s for s in scenarios},
         }
 
-    # Backward compatibility helper
     def generate_covid_crash_prices(self, n_days: int = 60) -> pd.DataFrame:
         np.random.seed(2020)
         dates = pd.date_range(start="2020-02-01", periods=n_days, freq="B")

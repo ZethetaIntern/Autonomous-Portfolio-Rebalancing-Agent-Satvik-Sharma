@@ -57,7 +57,7 @@ class EscalationManager:
     def __init__(
         self,
         extreme_turnover_limit: float = 0.40,
-        large_aum_escalation_limit: float = 250_000_000.0,  # 25 Crores
+        large_aum_escalation_limit: float = 250_000_000.0,
         large_aum_turnover_limit: float = 0.25,
     ) -> None:
         self.extreme_turnover = extreme_turnover_limit

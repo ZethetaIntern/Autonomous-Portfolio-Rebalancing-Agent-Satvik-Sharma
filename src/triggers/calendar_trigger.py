@@ -49,13 +49,11 @@ class CalendarTriggerEvaluator(BaseTriggerEvaluator):
         days_since_rebalance = int(portfolio_record.get("days_since_rebalance", 0))
         cadence_target = self.cadence_days.get(risk_category, 180)
 
-        # Allow mandate override in context or record
         mandate_frequency = portfolio_record.get("mandate_frequency")
         if mandate_frequency:
             override_map = {"MONTHLY": 30, "QUARTERLY": 90, "SEMI_ANNUALLY": 180, "ANNUALLY": 365}
             cadence_target = override_map.get(str(mandate_frequency).upper(), cadence_target)
 
-        # Trigger fires if elapsed time meets or exceeds target
         if days_since_rebalance >= cadence_target:
             overdue_days = days_since_rebalance - cadence_target
             priority = (

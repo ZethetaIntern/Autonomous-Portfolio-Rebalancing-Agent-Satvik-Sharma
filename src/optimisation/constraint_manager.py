@@ -30,10 +30,10 @@ class ConstraintManager:
         min_weight: float = 0.0,
         max_weight: float = 1.0,
         min_cash_buffer: float = 0.02,
-        sebi_issuer_limit: float = 0.10,          # 10% max per single issuer
-        sebi_sector_limit: float = 0.30,          # 30% max per industry sector
-        max_turnover_per_rebalance: float = 0.30, # 30% turnover ceiling
-        min_order_value_inr: float = 1000.0,      # Minimum trade threshold
+        sebi_issuer_limit: float = 0.10,
+        sebi_sector_limit: float = 0.30,
+        max_turnover_per_rebalance: float = 0.30,
+        min_order_value_inr: float = 1000.0,
     ) -> None:
         self.min_weight = min_weight
         self.max_weight = max_weight
@@ -97,7 +97,6 @@ class ConstraintManager:
         warnings: List[str] = []
         checks: Dict[str, Any] = {}
 
-        # 1. Budget Conservation
         total_w = sum(proposed_weights.values())
         budget_pass = abs(total_w - 1.0) <= 0.005
         if not budget_pass:
@@ -108,7 +107,6 @@ class ConstraintManager:
             "target": 1.0,
         }
 
-        # 2. Long-Only Mandate
         negative_assets = {a: round(w, 4) for a, w in proposed_weights.items() if w < -1e-5}
         long_only_pass = len(negative_assets) == 0
         if not long_only_pass:
@@ -118,7 +116,6 @@ class ConstraintManager:
             "negative_assets": negative_assets,
         }
 
-        # 3. Liquid Cash Buffer
         cash_weight = proposed_weights.get("LIQUID_CASH", 0.0)
         cash_pass = cash_weight >= (self.min_cash_buffer - 1e-4)
         if not cash_pass:
@@ -131,14 +128,11 @@ class ConstraintManager:
             "min_required": round(self.min_cash_buffer, 4),
         }
 
-        # 4. SEBI Single-Issuer Concentration
-        # If issuer mappings provided, aggregate by issuer; otherwise only check if caller specifically requests
         issuer_weights: Dict[str, float] = {}
         if issuer_mappings is not None:
             for asset, w in proposed_weights.items():
                 issuer = issuer_mappings.get(asset)
                 if issuer:
-                    # Sovereign / index broad instruments are exempt from 10% single corporate issuer rule
                     is_exempt = any(
                         term in issuer.upper() for term in ("G_SEC", "SOVEREIGN", "NIFTY_50", "INDEX", "GOI", "CASH")
                     )
@@ -160,7 +154,6 @@ class ConstraintManager:
             "issuer_breakdown": {k: round(v, 4) for k, v in issuer_weights.items()},
         }
 
-        # 5. SEBI Sector Concentration
         sector_weights: Dict[str, float] = {}
         if sector_mappings:
             for asset, w in proposed_weights.items():
@@ -186,7 +179,6 @@ class ConstraintManager:
             "sector_breakdown": {k: round(v, 4) for k, v in sector_weights.items()},
         }
 
-        # 6. Turnover Budget Compliance
         all_assets = set(list(current_weights.keys()) + list(proposed_weights.keys()))
         turnover = sum(abs(proposed_weights.get(a, 0.0) - current_weights.get(a, 0.0)) for a in all_assets) / 2.0
         allowed_turnover = turnover_budget if turnover_budget is not None else self.max_turnover
@@ -202,7 +194,6 @@ class ConstraintManager:
             "ceiling": round(allowed_turnover, 4),
         }
 
-        # 7. Minimum Trade Size & Order Sanity
         if trade_orders:
             small_orders = []
             for o in trade_orders:
@@ -222,7 +213,6 @@ class ConstraintManager:
         is_valid = len(violations) == 0
         sebi_compliant = sebi_issuer_pass and sebi_sector_pass and long_only_pass
 
-        # Build summary narrative
         if is_valid:
             narrative = (
                 f"Portfolio {portfolio_id}: Pre-trade validation SUCCESSFUL. All SEBI statutory limits, "

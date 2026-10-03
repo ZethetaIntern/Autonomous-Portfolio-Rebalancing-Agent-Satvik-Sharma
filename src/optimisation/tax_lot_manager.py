@@ -11,7 +11,6 @@ import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 
-# Default 30-day Wash Sale Avoidance Substitute Asset Mapping
 DEFAULT_SUBSTITUTE_ASSET_MAP: Dict[str, str] = {
     "NIFTY_50_EQUITY": "NIFTY_NEXT_50_EQUITY",
     "G_SEC_BONDS": "BHARAT_BOND_ETF",
@@ -51,7 +50,6 @@ class TaxLot:
     def is_ltcg(self, as_of: Optional[datetime.date] = None, equity_threshold_days: int = 365) -> bool:
         """Determines if the lot qualifies for Long-Term Capital Gains (>12 months for equity)."""
         days = self.holding_period_days(as_of)
-        # Indian equity holding threshold is 12 months (365 days)
         return days >= equity_threshold_days
 
     def gain_category(self, as_of: Optional[datetime.date] = None) -> str:
@@ -73,11 +71,10 @@ class TaxLotManager:
         wash_sale_window_days: int = 30,
         equity_ltcg_days: int = 365,
     ) -> None:
-        self.lots: Dict[str, List[TaxLot]] = {}  # portfolio_id -> list of TaxLots
+        self.lots: Dict[str, List[TaxLot]] = {}
         self.substitute_map = substitute_map or DEFAULT_SUBSTITUTE_ASSET_MAP.copy()
         self.wash_sale_window_days = wash_sale_window_days
         self.equity_ltcg_days = equity_ltcg_days
-        # History of loss harvests: portfolio_id -> List[(asset_class, harvest_date, loss_inr)]
         self.harvest_history: Dict[str, List[Tuple[str, datetime.date, float]]] = {}
 
     def add_lot(self, lot: TaxLot) -> None:
@@ -176,7 +173,6 @@ class TaxLotManager:
         if not candidate_lots:
             return []
 
-        # Sort lots by strategy
         strategy_upper = strategy.upper()
         if strategy_upper == "FIFO":
             candidate_lots.sort(key=lambda l: l.acquisition_date)
@@ -188,11 +184,6 @@ class TaxLotManager:
             def sort_key(lot: TaxLot) -> Tuple[int, float]:
                 cat = lot.gain_category(ref_date)
                 per_share_gain = lot.current_price - lot.cost_per_share
-                # Priority rank:
-                # 0: STCL (sort by most negative per-share gain)
-                # 1: LTCL (sort by most negative per-share gain)
-                # 2: LTCG (sort by smallest positive per-share gain)
-                # 3: STCG (sort by smallest positive per-share gain)
                 if cat == "STCL":
                     return (0, per_share_gain)
                 elif cat == "LTCL":
@@ -267,11 +258,9 @@ class TaxLotManager:
                 else:
                     realized_stcl += loss_val
 
-            # Record loss harvest if loss realized
             if gain_or_loss < 0:
                 self.record_loss_harvest(portfolio_id, asset_class, ref_date, abs(gain_or_loss))
 
-            # Reduce quantity in lot
             lot.quantity -= units
 
             lots_depleted_info.append({
@@ -284,7 +273,6 @@ class TaxLotManager:
                 "remaining_lot_units": max(0.0, lot.quantity),
             })
 
-        # Remove exhausted lots
         if portfolio_id in self.lots:
             self.lots[portfolio_id] = [l for l in self.lots[portfolio_id] if l.quantity > 1e-6]
 

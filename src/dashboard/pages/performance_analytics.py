@@ -13,10 +13,8 @@ st.set_page_config(page_title="Performance Analytics | WealthPilot AI", page_ico
 st.title("📈 Performance & Strategy Attribution")
 st.markdown("Quantitative backtest and live performance benchmarking: **WealthPilot AI** vs. **Legacy Calendar** vs. **Buy & Hold**.")
 
-# Rolling metrics selector
 horizon = st.radio("Select Evaluation Horizon:", ["1-Month", "3-Month", "6-Month", "12-Month"], index=3, horizontal=True)
 
-# Performance Cards
 metrics_data = {
     "1-Month": {"AI": (1.8, 1.45, -2.1, 0.42, 1.2), "Cal": (1.1, 1.10, -2.8, 1.15, 4.5), "BH": (1.9, 0.95, -3.4, 2.80, 0.0)},
     "3-Month": {"AI": (5.2, 1.62, -3.8, 0.58, 3.8), "Cal": (3.9, 1.24, -4.9, 1.42, 12.1), "BH": (4.1, 1.05, -6.2, 3.40, 0.0)},
@@ -35,16 +33,14 @@ m5.metric("Annualized Turnover", f"{sel['AI'][4]}%", f"-{sel['Cal'][4] - sel['AI
 
 st.divider()
 
-# Strategy Comparison: Cumulative Wealth Growth
 st.subheader("📊 Strategy Cumulative Performance Comparison")
 dates = pd.date_range(end=pd.Timestamp.today(), periods=250, freq="B")
 np.random.seed(42)
 
-# Synthetic daily returns calibrated to Indian markets (Nifty 50 + G-Sec)
 market_ret = np.random.normal(loc=0.0006, scale=0.009, size=len(dates))
-ai_ret = market_ret * 0.98 + np.random.normal(loc=0.00015, scale=0.002, size=len(dates))  # Consistent tax & drift alpha
-cal_ret = market_ret * 0.95 - (np.arange(len(dates)) % 60 == 0) * 0.0015  # Quarterly churn cost shock
-bh_ret = market_ret * 1.05 + np.random.normal(loc=0.0, scale=0.004, size=len(dates))  # Drifted risk
+ai_ret = market_ret * 0.98 + np.random.normal(loc=0.00015, scale=0.002, size=len(dates))
+cal_ret = market_ret * 0.95 - (np.arange(len(dates)) % 60 == 0) * 0.0015
+bh_ret = market_ret * 1.05 + np.random.normal(loc=0.0, scale=0.004, size=len(dates))
 
 ai_curve = 100 * np.cumprod(1 + ai_ret)
 cal_curve = 100 * np.cumprod(1 + cal_ret)
@@ -67,7 +63,6 @@ st.plotly_chart(fig_comp, use_container_width=True)
 
 st.divider()
 
-# Two columns: Factor Attribution and Cost/Tax Efficiency
 col_attr, col_costs = st.columns(2)
 
 with col_attr:

@@ -45,7 +45,6 @@ class RegulatoryReporter:
         tx_logs = transaction_logs or []
         exceptions = overrides_and_exceptions or []
 
-        # Summarize transactions
         total_trade_volume_inr = sum(
             float(t.get("trade_value_inr", t.get("order_value_inr", 0.0))) for t in tx_logs
         )
@@ -53,7 +52,6 @@ class RegulatoryReporter:
 
         package_id = f"SEBI-AUDIT-PKG-{int(datetime.datetime.now().timestamp())}"
 
-        # Integrity seal
         seal_content = f"{package_id}:{reporting_period}:{len(tx_logs)}:{len(exceptions)}:{now_utc}"
         digital_seal = hashlib.sha256(seal_content.encode("utf-8")).hexdigest()
 

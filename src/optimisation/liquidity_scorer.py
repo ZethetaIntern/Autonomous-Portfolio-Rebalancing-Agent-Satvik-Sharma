@@ -13,25 +13,24 @@ from typing import Any, Dict, List, Optional, Union
 from src.optimisation import TradeOrder
 
 
-# Default Liquidity Parameters calibrated for Indian Capital Markets
 DEFAULT_LIQUIDITY_PROFILES: Dict[str, Dict[str, float]] = {
     "NIFTY_50_EQUITY": {
-        "adv_inr": 25_000_000_000.0,  # ₹2,500 Crores
+        "adv_inr": 25_000_000_000.0,
         "bid_ask_spread_bps": 2.5,
-        "max_participation_rate": 0.10,  # Max 10% of ADV per day
+        "max_participation_rate": 0.10,
     },
     "G_SEC_BONDS": {
-        "adv_inr": 15_000_000_000.0,  # ₹1,500 Crores
+        "adv_inr": 15_000_000_000.0,
         "bid_ask_spread_bps": 1.5,
         "max_participation_rate": 0.15,
     },
     "CORP_BONDS": {
-        "adv_inr": 500_000_000.0,     # ₹50 Crores
+        "adv_inr": 500_000_000.0,
         "bid_ask_spread_bps": 25.0,
-        "max_participation_rate": 0.05,  # Max 5% of ADV per day (illiquid credit)
+        "max_participation_rate": 0.05,
     },
     "GOLD_ETF": {
-        "adv_inr": 500_000_000.0,     # ₹50 Crores
+        "adv_inr": 500_000_000.0,
         "bid_ask_spread_bps": 8.0,
         "max_participation_rate": 0.08,
     },
@@ -50,7 +49,7 @@ class ExecutionSlice:
     slice_date_offset: int
     target_units: float
     target_value_inr: float
-    algorithm: str  # "TWAP" or "VWAP"
+    algorithm: str
     time_window: str
     expected_impact_bps: float
 
@@ -101,23 +100,17 @@ class LiquidityScorer:
         adv = adv_inr if adv_inr is not None else profile.get("adv_inr", 1_000_000_000.0)
         spread = bid_ask_spread_bps if bid_ask_spread_bps is not None else profile.get("bid_ask_spread_bps", 10.0)
 
-        # 1. ADV Score: log10 scaled between ₹10 Lakhs (0.0) and ₹1,000 Crores (1.0)
         log_adv = math.log10(max(adv, 1.0))
-        # log10(1e6) = 6.0, log10(1e10) = 10.0
         adv_score = max(0.0, min(1.0, (log_adv - 6.0) / 4.0))
 
-        # 2. Spread Score: 0 bps = 1.0, 50+ bps = 0.0
         spread_score = max(0.0, min(1.0, 1.0 - (spread / 50.0)))
 
-        # 3. Trade Participation Rate
         participation = (trade_value_inr / max(adv, 1.0)) if trade_value_inr > 0 else 0.0
         participation_penalty = max(0.0, min(0.3, participation * 2.0))
 
-        # Composite score
         raw_score = (0.60 * adv_score) + (0.40 * spread_score) - participation_penalty
         final_score = max(0.05, min(1.0, raw_score))
 
-        # Tier classification
         if final_score >= 0.75:
             tier = "TIER_1_HIGH_LIQUIDITY"
         elif final_score >= 0.45:

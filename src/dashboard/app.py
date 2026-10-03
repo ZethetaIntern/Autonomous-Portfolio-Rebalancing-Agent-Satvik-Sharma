@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-# Configure page
 st.set_page_config(
     page_title="WealthPilot AI | Autonomous Rebalancing Cockpit",
     page_icon="⚖️",
@@ -19,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling for Sleek Wealthtech Aesthetic
 st.markdown("""
 <style>
     .metric-card {
@@ -49,7 +47,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Top Bar / Status Banner
 col_head1, col_head2 = st.columns([3, 1])
 with col_head1:
     st.title("⚖️ WealthPilot AI")
@@ -65,7 +62,6 @@ with col_head2:
 
 st.divider()
 
-# High-Level Executive Metrics
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric(label="Total Monitored Portfolios", value="50,000", delta="+1,240 QTD")
 m2.metric(label="Total AUM Supervised", value="₹14,250 Cr", delta="+₹320 Cr MTD")
@@ -105,7 +101,6 @@ with col_left:
 
 with col_right:
     st.markdown("#### Universe Drift Distribution")
-    # Quick visual mini-donut
     labels = ["In Tolerance (<5%)", "Warning (5-10%)", "Critical Drift (>10%)"]
     values = [45210, 3948, 842]
     colors = ["#10b981", "#f59e0b", "#ef4444"]

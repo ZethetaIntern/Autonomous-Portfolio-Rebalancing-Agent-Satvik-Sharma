@@ -12,7 +12,6 @@ st.set_page_config(page_title="Explainability Centre | WealthPilot AI", page_ico
 st.title("🧠 Explainability Centre & Decision Repository")
 st.markdown("Searchable repository of AI-generated rebalancing explanations tailored across **Client**, **Advisor**, and **SEBI Compliance** tiers, featuring SHAP feature attributions and counterfactual reasoning.")
 
-# Filter Bar
 col_f1, col_f2, col_f3 = st.columns(3)
 with col_f1:
     audience_filter = st.selectbox("Target Audience:", ["Client (Plain Language)", "Advisor (Technical & QP)", "Compliance (SEBI Regulatory)"])
@@ -23,7 +22,6 @@ with col_f3:
 
 st.divider()
 
-# Sample Explanation Records
 explanations = [
     {
         "id": "EXP-2026-881",
@@ -92,7 +90,6 @@ explanations = [
     },
 ]
 
-# Filter logic
 displayed_records = [
     r for r in explanations
     if (trigger_filter == "All Triggers" or r["trigger"] == trigger_filter)
@@ -150,7 +147,6 @@ with col_shap:
 
 st.divider()
 
-# Section 3: Interactive Counterfactual Simulator
 st.subheader("⚡ What-If Counterfactual Reasoning Engine")
 st.caption("Simulate alternative market conditions to see if the AI agent would still trigger a rebalance.")
 
@@ -162,7 +158,6 @@ with c_cf2:
 with c_cf3:
     cf_volatility = st.selectbox("Market Volatility Regime:", ["Low (VIX < 15)", "Normal (VIX 15-25)", "High (VIX > 25)"])
 
-# Decision rule counterfactual evaluation
 threshold_limit = 5.0
 would_trigger = (cf_drift >= threshold_limit) and (cf_tax_cost < 30000)
 

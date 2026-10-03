@@ -59,7 +59,6 @@ class PortfolioOptimiser:
         else:
             self.cov = np.diag(np.full(self.n_assets, 0.04))
 
-        # Ensure covariance matrix is strictly symmetric and positive semi-definite
         self.cov = (self.cov + self.cov.T) / 2.0
         min_eig = np.min(np.linalg.eigvalsh(self.cov))
         if min_eig < 1e-8:
@@ -74,7 +73,6 @@ class PortfolioOptimiser:
             return getattr(cp, requested.upper())
         if self.default_solver and self.default_solver.upper() in available:
             return getattr(cp, self.default_solver.upper())
-        # Priority order for continuous QP
         for s in ["CLARABEL", "OSQP", "SCS"]:
             if s in available:
                 return getattr(cp, s)
@@ -118,7 +116,6 @@ class PortfolioOptimiser:
         curr = self._to_weight_vector(current_weights)
         targ = self._to_weight_vector(target_weights)
 
-        # Baseline analytical / projection fallback if CVXPY is not available
         if not HAS_CVXPY:
             return self._fallback_analytical_solve(
                 curr, targ, turnover_budget=turnover_budget, min_cash_buffer=min_cash_buffer
@@ -126,7 +123,6 @@ class PortfolioOptimiser:
 
         solver_obj = self._resolve_solver(solver)
 
-        # First pass continuous QP solve
         result = self._solve_cvxpy_qp(
             curr=curr,
             targ=targ,
@@ -142,13 +138,10 @@ class PortfolioOptimiser:
             fixed_zero_mask=None,
         )
 
-        # Second pass: if min_trade_size > 0 and some trades are smaller than threshold,
-        # zero out the sub-threshold trades and re-solve to satisfy budget & cash exactly.
         if min_trade_size > 0.0 and result.get("status") in ("OPTIMAL", "optimal"):
             w_trade = result["trade_weights_array"]
             sub_threshold = (np.abs(w_trade) > 1e-6) & (np.abs(w_trade) < min_trade_size)
             if np.any(sub_threshold):
-                # Fix sub-threshold assets to have zero trade and re-solve
                 result_refined = self._solve_cvxpy_qp(
                     curr=curr,
                     targ=targ,
@@ -188,8 +181,6 @@ class PortfolioOptimiser:
         w_new = curr + w_trade
         delta = w_new - targ
 
-        # Objective: minimize tracking error variance relative to target weights
-        # (w_current + w_trade - w_target)^T * Cov * (w_current + w_trade - w_target)
         obj_expr = cp.quad_form(delta, cp.psd_wrap(self.cov))
         if turnover_penalty > 0:
             obj_expr += turnover_penalty * cp.norm1(w_trade)
@@ -197,11 +188,9 @@ class PortfolioOptimiser:
         objective = cp.Minimize(obj_expr)
         constraints = []
 
-        # 1. Budget constraint: net cash flow from trades = deposit/withdrawal
         target_sum = 1.0 + float(net_cash_flow)
         constraints.append(cp.sum(w_new) == target_sum)
 
-        # 2. Long-only constraint / Asset bounds
         if asset_bounds:
             for i, name in enumerate(self.asset_names):
                 lb, ub = asset_bounds.get(name, (0.0, 1.0))
@@ -210,24 +199,17 @@ class PortfolioOptimiser:
         else:
             constraints.append(w_new >= 0.0)
 
-        # 3. Minimum cash buffer
         if "LIQUID_CASH" in self.asset_names:
             cash_idx = self.asset_names.index("LIQUID_CASH")
             constraints.append(w_new[cash_idx] >= min_cash_buffer)
 
-        # 4. Turnover budget limit
         if turnover_budget is not None and turnover_budget > 0:
-            # 0.5 * sum(|w_trade|) <= turnover_budget <=> norm1(w_trade) <= 2 * turnover_budget
             constraints.append(cp.norm1(w_trade) <= 2.0 * float(turnover_budget))
 
-        # 5. SEBI single-issuer limit (max 10% per issuer)
         if sebi_issuer_limit is not None and sebi_issuer_limit > 0:
             for i, name in enumerate(self.asset_names):
-                # Typically applies to single corporate or equity issuers
-                # If NIFTY_50_EQUITY is aggregate index, limit can still be tested or applied to single stock
                 constraints.append(w_new[i] <= float(sebi_issuer_limit))
 
-        # 6. SEBI sector concentration limits
         if sebi_sector_limits and asset_sector_map:
             for sector, cap in sebi_sector_limits.items():
                 sector_indices = [
@@ -237,7 +219,6 @@ class PortfolioOptimiser:
                 if sector_indices:
                     constraints.append(cp.sum([w_new[i] for i in sector_indices]) <= float(cap))
 
-        # 7. Fixed zero trades (for sub-threshold refinement)
         if fixed_zero_mask is not None:
             for i in range(self.n_assets):
                 if fixed_zero_mask[i]:
@@ -268,7 +249,6 @@ class PortfolioOptimiser:
         if status in ("OPTIMAL", "OPTIMAL_INACCURATE") and w_trade.value is not None:
             w_trade_val = np.asarray(w_trade.value, dtype=np.float64).flatten()
             w_opt_val = curr + w_trade_val
-            # Clean floating precision artefacts
             w_opt_val = np.clip(w_opt_val, 0.0, None)
             total = np.sum(w_opt_val)
             if abs(total - target_sum) > 1e-7 and total > 0:
@@ -358,7 +338,6 @@ class PortfolioOptimiser:
         pred_te = float(np.sqrt(max(0.0, tev)))
         turnover = float(np.sum(np.abs(trade)) / 2.0)
 
-        # Verification of constraints
         violations: List[str] = []
         if abs(np.sum(optimal) - (np.sum(curr) + np.sum(trade))) > 1e-4:
             violations.append(f"Budget sum mismatch: sum(optimal)={np.sum(optimal):.4f}")

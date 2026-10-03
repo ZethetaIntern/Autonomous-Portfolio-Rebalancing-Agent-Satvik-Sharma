@@ -11,7 +11,6 @@ Role Archetypes:
 
 import warnings
 
-# Ensure warnings.warn remains compatible across Python 3.13 and third-party libraries
 _orig_warn = warnings.warn
 def _compat_warn(message, category=None, stacklevel=1, source=None, *args, **kwargs):
     kwargs.pop("skip_file_prefixes", None)

@@ -64,7 +64,6 @@ class TaxSpecialistAgent:
         strategy = context.get("lot_selection_strategy", "TAX_MINIMIZER")
         as_of = context.get("as_of_date") or datetime.date.today()
 
-        # 1. Register existing tax lots if supplied
         existing_lots = context.get("existing_tax_lots", [])
         for lot in existing_lots:
             if isinstance(lot, TaxLot):
@@ -84,7 +83,6 @@ class TaxSpecialistAgent:
                 )
                 self.lot_manager.add_lot(lot_obj)
 
-        # 2. Convert candidate trades to TradeOrder objects if dicts
         trades: List[TradeOrder] = []
         for t in raw_trades:
             if isinstance(t, TradeOrder):
@@ -105,7 +103,6 @@ class TaxSpecialistAgent:
                 )
                 trades.append(order_obj)
 
-        # 3. Evaluate taxes and wash sales
         eval_res = self.tax_optimiser.evaluate_trade_plan_taxes(
             portfolio_id=p_id,
             orders=trades,

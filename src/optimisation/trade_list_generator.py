@@ -99,21 +99,18 @@ class TradeListGenerator:
         lots = {**self.lot_sizes, **(lot_sizes or {})}
         all_assets = list(set(list(current_weights.keys()) + list(optimal_weights.keys())))
 
-        # Filter out the cash buffer asset from active share ordering
         non_cash_assets = [a for a in all_assets if a != self.cash_asset_key]
 
         current_cash_inr = float(current_weights.get(self.cash_asset_key, 0.0) * portfolio_aum)
         target_cash_inr = float(optimal_weights.get(self.cash_asset_key, min_cash_buffer_pct) * portfolio_aum)
         min_cash_buffer_inr = float(min_cash_buffer_pct * portfolio_aum)
 
-        # 1. Compute continuous target value changes for non-cash assets
         target_deltas: Dict[str, float] = {}
         for a in non_cash_assets:
             curr_w = current_weights.get(a, 0.0)
             opt_w = optimal_weights.get(a, 0.0)
             target_deltas[a] = (opt_w - curr_w) * portfolio_aum
 
-        # 2. Phase A: Joint optimization of SELL orders
         sell_orders: List[Dict[str, Any]] = []
         realized_sell_proceeds = 0.0
 
@@ -129,11 +126,9 @@ class TradeListGenerator:
             price = prices.get(a, 100.0)
             lot = lots.get(a, 1)
 
-            # Max shares currently held (cannot short)
             max_shares_held = (current_weights.get(a, 0.0) * portfolio_aum) / price
             raw_sell_shares = needed_sell_val / price
 
-            # Round to nearest lot without exceeding holding
             rounded_lots = round(raw_sell_shares / lot)
             sell_shares = rounded_lots * lot
 
@@ -155,8 +150,6 @@ class TradeListGenerator:
                 "lot_size": lot,
             })
 
-        # 3. Phase B: Joint round-lot optimization of BUY orders with cash ceiling
-        # Available cash ceiling: current cash + sell proceeds - minimum cash buffer
         net_spendable_cash = max(0.0, current_cash_inr + realized_sell_proceeds - min_cash_buffer_inr)
 
         buy_candidates: List[Dict[str, Any]] = []
@@ -186,13 +179,10 @@ class TradeListGenerator:
                 "allocated_cost": base_cost,
             })
 
-        # Check total base buy cost against spendable cash
         total_base_cost = sum(c["allocated_cost"] for c in buy_candidates)
         remaining_cash = net_spendable_cash - total_base_cost
 
-        # If base cost exceeds cash, trim lowest priority lots
         if remaining_cash < 0:
-            # Sort buy candidates by relative over-allocation
             buy_candidates.sort(key=lambda c: (c["allocated_cost"] - c["target_val"]), reverse=True)
             for c in buy_candidates:
                 while remaining_cash < 0 and c["allocated_lots"] > 0:
@@ -201,7 +191,6 @@ class TradeListGenerator:
                     c["allocated_cost"] = c["allocated_shares"] * c["price"]
                     remaining_cash += c["lot_cost"]
 
-        # If remaining cash is positive, perform greedy marginal error reduction
         if remaining_cash > 0:
             improved = True
             while improved:
@@ -211,7 +200,6 @@ class TradeListGenerator:
 
                 for idx, c in enumerate(buy_candidates):
                     if c["lot_cost"] <= remaining_cash:
-                        # Marginal tracking error improvement: (T - current_cost)^2 - (T - (current_cost + lot_cost))^2
                         current_cost = c["allocated_cost"]
                         target_v = c["target_val"]
                         current_err_sq = (target_v - current_cost) ** 2
@@ -230,7 +218,6 @@ class TradeListGenerator:
                     remaining_cash -= cand["lot_cost"]
                     improved = True
 
-        # Build final Buy orders
         buy_orders: List[Dict[str, Any]] = []
         total_buy_spend = 0.0
         for c in buy_candidates:
@@ -245,7 +232,6 @@ class TradeListGenerator:
                 })
                 total_buy_spend += c["allocated_cost"]
 
-        # 4. Synthesize final TradeOrder objects
         orders: List[TradeOrder] = []
         for s in sell_orders:
             orders.append(
@@ -275,7 +261,6 @@ class TradeListGenerator:
                 )
             )
 
-        # 5. Compute resulting discrete weights and post-rebalance cash
         post_cash_inr = current_cash_inr + realized_sell_proceeds - total_buy_spend
         discrete_values: Dict[str, float] = {self.cash_asset_key: post_cash_inr}
 

@@ -52,7 +52,6 @@ class ThresholdTriggerEvaluator(BaseTriggerEvaluator):
         client_id = str(portfolio_record.get("client_id", "UNKNOWN"))
         risk_category = str(portfolio_record.get("risk_category", "Balanced"))
 
-        # 1. Effective threshold check
         effective_thresh = self.threshold_mgr.get_effective_threshold(
             risk_category=risk_category,
             client_id=client_id,
@@ -72,7 +71,6 @@ class ThresholdTriggerEvaluator(BaseTriggerEvaluator):
             if abs_drift > effective_thresh:
                 breached_assets.append((ac, curr_w, targ_w, abs_drift))
 
-            # Concentration hard cap check
             corridor = self.asset_corridors.get(ac, {})
             hard_cap = corridor.get("hard_cap")
             if hard_cap and curr_w > hard_cap:
@@ -95,7 +93,6 @@ class ThresholdTriggerEvaluator(BaseTriggerEvaluator):
                     )
                 )
 
-        # Cash buffer deficit check
         liquid_curr = float(portfolio_record.get("current_weight_LIQUID_CASH", 0.05))
         min_cash = self.asset_corridors.get("LIQUID_CASH", {}).get("min_buffer", 0.02)
         if liquid_curr < min_cash:
@@ -113,7 +110,6 @@ class ThresholdTriggerEvaluator(BaseTriggerEvaluator):
                 )
             )
 
-        # Asset class drift breach trigger
         if breached_assets:
             ratio = max_drift / max(effective_thresh, 0.001)
             priority = TriggerPriority.CRITICAL if ratio >= 2.0 else (

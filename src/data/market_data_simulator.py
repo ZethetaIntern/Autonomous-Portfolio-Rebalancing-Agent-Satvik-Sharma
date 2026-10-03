@@ -23,11 +23,9 @@ ASSET_CLASSES: List[str] = [
     "LIQUID_CASH",
 ]
 
-# Baseline Annual Expected Returns (μ) & Annual Volatilities (σ)
 DEFAULT_ANNUAL_RETURNS: np.ndarray = np.array([0.125, 0.071, 0.082, 0.095, 0.062], dtype=np.float64)
 DEFAULT_ANNUAL_VOLS: np.ndarray = np.array([0.160, 0.045, 0.055, 0.140, 0.005], dtype=np.float64)
 
-# Realistic historical correlation matrix for Indian capital markets
 DEFAULT_CORRELATION: np.ndarray = np.array(
     [
         [ 1.00,  0.08,  0.15, -0.12,  0.01],
@@ -60,12 +58,10 @@ class MarketDataSimulator:
         self.trading_days = trading_days_per_year
         self.rng = np.random.default_rng(seed)
 
-        # Compute Covariance Matrix Σ = D * R * D
         diag_vols = np.diag(self.annual_vols)
         self.cov_matrix_annual = diag_vols @ self.correlation_matrix @ diag_vols
         self.cov_matrix_daily = self.cov_matrix_annual / self.trading_days
 
-        # Precompute Cholesky factor for fast simulation: L * L^T = Cov
         self.cholesky_daily = np.linalg.cholesky(self.cov_matrix_daily)
 
     def get_annual_covariance(self) -> np.ndarray:
@@ -115,10 +111,10 @@ class MarketDataSimulator:
         """
         if asset_drawdowns is None:
             asset_drawdowns = {
-                "NIFTY_50_EQUITY": -0.12,  # -12% sudden drop
-                "G_SEC_BONDS": 0.015,     # Flight to safety +1.5%
-                "CORP_BONDS": -0.01,     # Slight credit widening
-                "GOLD_ETF": 0.045,        # Gold rally +4.5%
-                "LIQUID_CASH": 0.0002,    # Overnight yield
+                "NIFTY_50_EQUITY": -0.12,
+                "G_SEC_BONDS": 0.015,
+                "CORP_BONDS": -0.01,
+                "GOLD_ETF": 0.045,
+                "LIQUID_CASH": 0.0002,
             }
         return {asset: asset_drawdowns.get(asset, 0.0) for asset in self.asset_names}

@@ -12,7 +12,7 @@ class TradeOrder:
     """Executable security or asset-level order ticket."""
     portfolio_id: str
     asset_class: str
-    action: str  # BUY or SELL
+    action: str
     target_units: float
     estimated_price: float
     trade_value_inr: float

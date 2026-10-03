@@ -77,7 +77,6 @@ class BacktestEngine:
 
         assets = list(price_history.columns)
         if target_weights is None:
-            # Default institutional 50/30/10/10 asset allocation
             default_weights = {
                 "NIFTY_50_EQUITY": 0.50,
                 "G_SEC_10Y_BOND": 0.30,
@@ -85,20 +84,17 @@ class BacktestEngine:
                 "GOLD_ETF": 0.10,
             }
             target_weights = {a: default_weights.get(a, 1.0 / len(assets)) for a in assets}
-            # Normalize
             tot = sum(target_weights.values())
             target_weights = {k: v / tot for k, v in target_weights.items()}
 
         n_days = len(price_history) - 1
         dates = price_history.index
 
-        # Initialize portfolio state on Day 0
         current_capital = self.initial_capital
         cash = current_capital * min_cash_buffer
         invested_capital = current_capital - cash
 
         initial_prices = price_history.iloc[0]
-        # Quantities held
         quantities = {
             asset: (invested_capital * target_weights.get(asset, 0.0)) / initial_prices[asset]
             for asset in assets
@@ -111,12 +107,10 @@ class BacktestEngine:
         total_tax_shield_inr = 0.0
         rebalance_count = 0
 
-        # Day-by-day simulation loop
         for day_idx in range(1, n_days + 1):
             day_prices = price_history.iloc[day_idx]
             current_date = dates[day_idx]
 
-            # Mark to market portfolio valuation
             asset_values = {a: quantities[a] * day_prices[a] for a in assets}
             total_invested = sum(asset_values.values())
             total_aum = total_invested + cash
@@ -124,7 +118,6 @@ class BacktestEngine:
 
             current_weights = {a: asset_values[a] / max(total_aum, 1.0) for a in assets}
 
-            # Evaluate rebalance condition according to chosen rule
             trigger_rebalance = False
             trigger_reason = ""
 
@@ -132,13 +125,11 @@ class BacktestEngine:
                 trigger_rebalance = False
 
             elif rebalance_rule == "CALENDAR_QUARTERLY":
-                # Rebalance every 63 trading days (approx 3 months)
                 if day_idx % 63 == 0:
                     trigger_rebalance = True
                     trigger_reason = f"Quarterly Calendar Scheduled Rebalance (Day {day_idx})"
 
             elif rebalance_rule == "THRESHOLD_ONLY":
-                # Static threshold check on individual asset drift
                 for a in assets:
                     t_w = target_weights.get(a, 0.0)
                     c_w = current_weights.get(a, 0.0)
@@ -148,31 +139,25 @@ class BacktestEngine:
                         break
 
             elif rebalance_rule == "AI_AGENT":
-                # Multi-metric trigger: SAD drift, quarterly check, or tax harvesting opportunity
                 sad = sum(abs(current_weights.get(a, 0.0) - target_weights.get(a, 0.0)) for a in assets)
                 max_single_drift = max(abs(current_weights.get(a, 0.0) - target_weights.get(a, 0.0)) for a in assets)
 
-                # Event 1: Dynamic SAD drift breach
                 if sad >= (drift_threshold * 1.5) or max_single_drift >= drift_threshold:
                     trigger_rebalance = True
                     trigger_reason = f"Dynamic SAD Drift Breach: SAD={sad:.2%}"
 
-                # Event 2: Scheduled check every 126 days if slight drift
                 elif day_idx % 126 == 0 and sad >= 0.03:
                     trigger_rebalance = True
                     trigger_reason = f"AI Semi-Annual Calibration: SAD={sad:.2%}"
 
-                # Event 3: March Tax-Loss Harvesting trigger (e.g. around day 60 if March)
                 elif day_idx == 60 and sad >= 0.025:
                     trigger_rebalance = True
                     trigger_reason = "Financial Year-End Tax Optimization Trigger"
 
-            # Execute rebalance if triggered
             if trigger_rebalance:
                 rebalance_count += 1
 
                 if rebalance_rule == "AI_AGENT":
-                    # Solve constrained QP allocation
                     opt_res = self.optimiser.optimize_allocation(
                         current_weights=current_weights,
                         target_weights=target_weights,
@@ -182,13 +167,11 @@ class BacktestEngine:
                     new_target_w = opt_res["optimal_weights"]
                     turnover_frac = opt_res["turnover"]
                 else:
-                    # Calendar and Threshold rebalance directly to target weights
                     new_target_w = target_weights
                     turnover_frac = sum(abs(current_weights.get(a, 0.0) - target_weights.get(a, 0.0)) for a in assets) / 2.0
 
                 turnover_history.append(turnover_frac)
 
-                # Compute trade orders & execute
                 target_invested = total_aum * (1.0 - min_cash_buffer)
                 trade_volume_inr = 0.0
 
@@ -197,13 +180,10 @@ class BacktestEngine:
                     current_val = asset_values.get(a, 0.0)
                     delta_val = desired_val - current_val
                     trade_volume_inr += abs(delta_val)
-                    # Update quantity
                     quantities[a] = desired_val / day_prices[a]
 
-                # Update cash
                 cash = total_aum * min_cash_buffer
 
-                # Estimate transaction costs
                 cost_summary = self.cost_estimator.estimate_trade_costs(
                     order={
                         "asset_class": "NIFTY_50_EQUITY",
@@ -214,12 +194,10 @@ class BacktestEngine:
                 day_cost = float(cost_summary.get("total_costs_inr", trade_volume_inr * 0.001))
                 total_costs_inr += day_cost
 
-                # Deduct costs from portfolio
                 total_aum = max(0.0, total_aum - day_cost)
                 cash = max(0.0, cash - day_cost)
                 portfolio_values[-1] = total_aum
 
-                # Tax-loss harvesting alpha (AI agent harvests tax loss shields)
                 if rebalance_rule == "AI_AGENT" and "Tax" in trigger_reason:
                     harvest_shield = min(day_prices.min() * 500.0, 45_000.0)
                     total_tax_shield_inr += harvest_shield
@@ -233,7 +211,6 @@ class BacktestEngine:
                     "cost_inr": round(day_cost, 2),
                 })
 
-        # Calculate comprehensive performance metrics
         perf_metrics = self.analyser.compute_comprehensive_metrics(
             portfolio_values=portfolio_values,
             turnover_history=turnover_history,

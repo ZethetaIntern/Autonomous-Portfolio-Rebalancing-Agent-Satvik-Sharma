@@ -66,7 +66,6 @@ class RiskManagerAgent:
         prop_w = context.get("proposed_weights", {})
         trades = context.get("tax_adjusted_trades", context.get("candidate_trades", []))
 
-        # 1. Calculate Portfolio Annual Volatility & 95% 1-Year VaR
         assets = self.sim.asset_names
         w_curr_vec = np.array([curr_w.get(a, 0.0) for a in assets], dtype=np.float64)
         w_prop_vec = np.array([prop_w.get(a, 0.0) for a in assets], dtype=np.float64)
@@ -77,18 +76,14 @@ class RiskManagerAgent:
         vol_curr = math.sqrt(max(0.0, var_curr))
         vol_prop = math.sqrt(max(0.0, var_prop))
 
-        # 95% Parametric VaR (1.645 * sigma)
         var_95_curr = 1.645 * vol_curr * 100.0
         var_95_prop = 1.645 * vol_prop * 100.0
 
-        # 2. Liquidity & Algorithmic Execution Scheduling (TWAP/VWAP)
         schedules: List[ExecutionSchedule] = self.liquidity_scorer.schedule_trade_list(trades)
         multi_day_count = sum(1 for s in schedules if s.is_multi_day)
 
-        # 3. Transaction Costs & Market Impact Estimation
         cost_analysis = self.cost_estimator.estimate_portfolio_trades_cost(trades)
 
-        # 4. Stress Testing: e.g. -20% Equity drop, +100 bps sovereign bond yield shock
         stress_shock = np.array([-0.20, -0.05, -0.06, 0.05, 0.00])
         shock_loss_curr = float(np.dot(w_curr_vec, stress_shock)) * 100.0
         shock_loss_prop = float(np.dot(w_prop_vec, stress_shock)) * 100.0

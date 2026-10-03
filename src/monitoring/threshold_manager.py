@@ -40,7 +40,7 @@ DEFAULT_ASSET_CORRIDORS: Dict[str, Dict[str, float]] = {
 class ClientPolicyOverlay:
     """Custom policy tolerance override for an individual client or account."""
     client_id: str
-    custom_band_delta: float = 0.0          # e.g., -0.005 for tighter monitoring
+    custom_band_delta: float = 0.0
     fixed_band_override: Optional[float] = None
     tax_sensitive: bool = False
     lock_in_until_date: Optional[str] = None
@@ -87,7 +87,6 @@ class ThresholdManager:
             overlay = self.client_overlays[client_id]
             if overlay.fixed_band_override is not None:
                 return overlay.fixed_band_override
-            # Apply delta, bounded below by 0.005 (0.5%)
             return max(0.005, base_threshold + overlay.custom_band_delta)
 
         return base_threshold
@@ -108,13 +107,11 @@ class ThresholdManager:
         Returns:
             Array of shape (N,) representing threshold floats.
         """
-        # Map risk categories via lookup
         base_arr = np.array([self.risk_bands.get(rc, 0.030) for rc in risk_categories], dtype=np.float64)
 
         if custom_deltas is not None:
             base_arr = np.maximum(0.005, base_arr + custom_deltas)
 
-        # Check registered client overlays if present
         if client_ids is not None and self.client_overlays:
             for i, cid in enumerate(client_ids):
                 if cid in self.client_overlays:

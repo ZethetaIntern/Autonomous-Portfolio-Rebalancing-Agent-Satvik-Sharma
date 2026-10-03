@@ -148,13 +148,11 @@ class OrchestratorAgent:
         risk_out = {}
         compliance_out = {}
 
-        # Retry loop (max 3 attempts)
         while attempt < max_retries and not success:
             attempt += 1
             self.memory.record_event("Orchestrator", "ATTEMPT_START", {"attempt": attempt, "workflow_id": wf_id})
 
             try:
-                # 1. Analyst Optimization
                 analyst_context = {
                     "portfolio_id": p_id,
                     "current_weights": current_weights,
@@ -169,7 +167,6 @@ class OrchestratorAgent:
                 analyst_out = self.portfolio_analyst.execute_task(analyst_context)
                 self.memory.record_event("PortfolioAnalyst", "QP_COMPLETED", {"status": analyst_out.get("status")})
 
-                # 2. Tax Specialist Optimization
                 tax_lots = portfolio_record.get("tax_lots", [])
                 candidate_trades = analyst_out.get("candidate_trades", [])
                 tax_out = self.tax_specialist.execute_task({
@@ -181,7 +178,6 @@ class OrchestratorAgent:
                 })
                 self.memory.record_event("TaxSpecialist", "TAX_EVAL_COMPLETED", {"net_realized_pnl": tax_out.get("net_realized_pnl_inr")})
 
-                # 3. Risk Manager Evaluation
                 risk_out = self.risk_manager.execute_task({
                     "portfolio_id": p_id,
                     "portfolio_aum": portfolio_aum,
@@ -191,7 +187,6 @@ class OrchestratorAgent:
                 })
                 self.memory.record_event("RiskManager", "RISK_EVAL_COMPLETED", {"pre_var": risk_out.get("pre_trade_var_95_inr")})
 
-                # 4. Compliance Officer Validation
                 compliance_out = self.compliance_officer.execute_task({
                     "portfolio_id": p_id,
                     "client_id": portfolio_record.get("client_id", "CLIENT_001"),
@@ -211,7 +206,6 @@ class OrchestratorAgent:
                     success = True
                 else:
                     last_error = f"Compliance check failed: {compliance_out.get('reasons', ['Rule violation'])}"
-                    # Auto-tighten turnover or cash buffer for next attempt
                     turnover_budget = max(0.05, turnover_budget * 0.85)
                     min_cash_buffer = min(0.05, min_cash_buffer * 1.10)
 
@@ -219,7 +213,6 @@ class OrchestratorAgent:
                 last_error = str(ex)
                 self.memory.record_event("Orchestrator", "ATTEMPT_EXCEPTION", {"attempt": attempt, "error": str(ex)})
 
-        # 5. Multi-audience explanation generation (if success or post-final-attempt)
         explanation_context = {
             "portfolio_id": p_id,
             "decision_id": wf_id,
@@ -265,5 +258,4 @@ class OrchestratorAgent:
         }
 
 
-# Backward compatibility alias
 Orchestrator = OrchestratorAgent

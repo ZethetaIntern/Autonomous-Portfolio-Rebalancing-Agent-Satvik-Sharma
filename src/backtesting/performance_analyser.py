@@ -38,16 +38,13 @@ class PerformanceAnalyser:
                 "max_drawdown_pct": 0.0,
             }
 
-        # Daily mean and annualized return (arithmetic & CAGR)
         daily_mean = float(np.mean(arr))
         ann_return = daily_mean * 252.0
         ann_vol = float(np.std(arr, ddof=1) * np.sqrt(252)) if len(arr) > 1 else 0.0
 
-        # Sharpe ratio
         excess_return = ann_return - rf
         sharpe = excess_return / max(ann_vol, 1e-6)
 
-        # Downside deviation & Sortino ratio
         downside = arr[arr < 0.0]
         if len(downside) > 1:
             downside_vol = float(np.std(downside, ddof=1) * np.sqrt(252))
@@ -55,7 +52,6 @@ class PerformanceAnalyser:
         else:
             sortino = sharpe
 
-        # Max Drawdown
         cum_ret = np.cumprod(1.0 + arr)
         cum_max = np.maximum.accumulate(cum_ret)
         drawdowns = (cum_ret - cum_max) / cum_max
@@ -69,7 +65,6 @@ class PerformanceAnalyser:
             "max_drawdown_pct": round(max_dd * 100.0, 2),
         }
 
-        # Tracking error & Information Ratio against benchmark if provided
         if benchmark_returns is not None:
             b_arr = np.asarray(benchmark_returns, dtype=np.float64)
             if len(b_arr) == len(arr) and len(arr) > 1:
@@ -125,22 +120,17 @@ class PerformanceAnalyser:
         n_days = len(daily_returns)
         cagr = ((final_val / initial_val) ** (252.0 / max(n_days, 1)) - 1.0) * 100.0
 
-        # Drawdown analysis
         cum_max = np.maximum.accumulate(vals)
         drawdowns = (vals - cum_max) / cum_max
         max_dd_pct = float(np.min(drawdowns)) * 100.0
 
-        # Turnover
         total_turnover = float(sum(turnover_history)) if turnover_history else 0.0
         annualized_turnover = total_turnover * (252.0 / max(n_days, 1))
 
-        # Tax Alpha in bps relative to initial capital
         tax_alpha_bps = (tax_shield_inr / max(initial_val, 1.0)) * 10000.0
 
-        # Cost Drag in bps
         cost_drag_bps = (transaction_costs_inr / max(initial_val, 1.0)) * 10000.0
 
-        # Calmar Ratio
         calmar = (cagr / 100.0) / max(abs(max_dd_pct / 100.0), 1e-4)
 
         return {

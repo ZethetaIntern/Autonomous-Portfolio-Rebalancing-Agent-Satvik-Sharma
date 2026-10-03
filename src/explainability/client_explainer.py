@@ -33,10 +33,8 @@ def count_syllables(word: str) -> int:
     w = re.sub(r"[^a-z]", "", w)
     if len(w) <= 3:
         return 1
-    # Count vowel groups
     vowels = "aeiouy"
     count = len(re.findall(r"[aeiouy]+", w))
-    # Discount silent trailing 'e'
     if w.endswith("e") and not w.endswith("le") and len(w) > 2:
         count = max(1, count - 1)
     if w.endswith("ed") and not w.endswith("ted") and not w.endswith("ded"):
@@ -122,7 +120,7 @@ class ClientExplainer:
                 f"Your investments were gently adjusted back to your {target_equity_pct:.0f}% target. "
                 f"Routine checkups help protect your wealth and make sure your money works as hard as you do."
             )
-        else:  # EVENT
+        else:
             headline = "Smart tax savings: We harvested losses to lower your taxes."
             narrative = (
                 f"We scanned your portfolio for year-end tax savings. "
@@ -135,9 +133,7 @@ class ClientExplainer:
         word_count = len(words)
         grade = calculate_flesch_kincaid_grade(narrative)
 
-        # Enforce Grade 8 constraint
         if grade > self.max_readability_grade:
-            # Shorten sentences for simpler readability
             sentences = narrative.split(". ")
             narrative = ". ".join(sentences[:3]) + "."
             grade = calculate_flesch_kincaid_grade(narrative)

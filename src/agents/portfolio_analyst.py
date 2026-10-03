@@ -89,7 +89,6 @@ class PortfolioAnalystAgent:
         sector_map = context.get("asset_sector_map")
         min_trade_size = context.get("min_trade_size", 0.0)
 
-        # 1. Solve QP continuous allocation
         opt_res = self.optimiser.optimize_allocation(
             current_weights=curr_w,
             target_weights=targ_w,
@@ -103,7 +102,6 @@ class PortfolioAnalystAgent:
 
         opt_w = opt_res["optimal_weights"]
 
-        # 2. Generate discrete executable trade tickets with joint round lots
         plan = self.generator.generate_trade_plan(
             portfolio_id=p_id,
             current_weights=curr_w,

@@ -96,12 +96,10 @@ class LimeExplainer:
                     "direction": direction,
                 })
         else:
-            # Analytical local perturbation Ridge fallback
             top_features, local_pred, local_score, intercept = self._local_ridge_approximation(
                 feat_vec, model, num_features
             )
 
-        # Build narrative
         top_driver = top_features[0] if top_features else {"feature_rule": "N/A", "weight": 0.0}
         direction_word = "elevated" if top_driver["weight"] > 0 else "suppressed"
         narrative = (
@@ -128,12 +126,10 @@ class LimeExplainer:
     ) -> Tuple[List[Dict[str, Any]], float, float, float]:
         """Custom local perturbation Ridge regression when external LIME package is disabled."""
         rng = np.random.default_rng(self.random_state)
-        # Sample gaussian perturbations around x
         pert = rng.normal(0, 0.15, size=(n_samples, len(x)))
         X_local = x + pert
         y_probs = model.predict_proba(X_local)[:, 1]
 
-        # Exponential kernel distance weights
         dists = np.linalg.norm(pert, axis=1)
         weights = np.exp(-dists / 0.5)
 

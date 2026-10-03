@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class CircuitBreakerState(str, Enum):
-    NORMAL = "NORMAL"          # Full autonomous trading enabled
-    THROTTLED = "THROTTLED"    # Heightened risk; reduced limits and mandatory advisory confirmations
-    HALTED = "HALTED"          # Platform or portfolio-level autonomous execution strictly frozen
+    NORMAL = "NORMAL"
+    THROTTLED = "THROTTLED"
+    HALTED = "HALTED"
 
 
 class KillSwitch:
@@ -28,8 +28,8 @@ class KillSwitch:
         self,
         vix_halt_threshold: float = 40.0,
         vix_throttle_threshold: float = 30.0,
-        error_rate_halt_threshold: float = 0.01,  # 1%
-        daily_market_drop_halt_threshold: float = -0.05,  # -5% in 1 day
+        error_rate_halt_threshold: float = 0.01,
+        daily_market_drop_halt_threshold: float = -0.05,
     ) -> None:
         self.vix_halt = vix_halt_threshold
         self.vix_throttle = vix_throttle_threshold
@@ -60,7 +60,6 @@ class KillSwitch:
         daily_market_return: Optional[float] = None,
     ) -> Tuple[CircuitBreakerState, Optional[str]]:
         """Evaluates live market and operational telemetry to trigger automated circuit breakers."""
-        # 1. Market Volatility (VIX)
         if vix_level is not None:
             if vix_level >= self.vix_halt:
                 reason = f"AUTOMATED TRIP: Extreme India VIX spike ({vix_level:.1f} >= {self.vix_halt:.1f})"
@@ -71,7 +70,6 @@ class KillSwitch:
                 self._log_event("CIRCUIT_THROTTLED", f"India VIX elevated at {vix_level:.1f}", "SYSTEM")
                 return CircuitBreakerState.THROTTLED, f"India VIX elevated at {vix_level:.1f}"
 
-        # 2. Execution / Optimizer Error Spike (> 1%)
         if total_executions > 100:
             error_rate = failed_executions / total_executions
             if error_rate >= self.error_rate_halt:
@@ -79,7 +77,6 @@ class KillSwitch:
                 self.activate_global_halt(reason=reason, source="AUTOMATED_ERROR_MONITOR")
                 return CircuitBreakerState.HALTED, reason
 
-        # 3. Sudden Market Crash / Flash Drop
         if daily_market_return is not None and daily_market_return <= self.daily_market_drop_halt:
             reason = f"AUTOMATED TRIP: Severe market flash drop ({daily_market_return:.2%} <= {self.daily_market_drop_halt:.2%})"
             self.activate_global_halt(reason=reason, source="AUTOMATED_MARKET_MONITOR")
