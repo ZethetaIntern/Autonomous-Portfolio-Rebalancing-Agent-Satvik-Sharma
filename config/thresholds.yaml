@@ -1,0 +1,56 @@
+# Thresholds and Tolerance Corridors for WealthPilot AI
+# Project 1D: Autonomous Portfolio Rebalancing Agent with Explainable Decisions
+
+drift_bands:
+  risk_category_defaults:
+    Ultra-Conservative: 0.020   # 2.0%
+    Conservative: 0.025         # 2.5%
+    Balanced: 0.030             # 3.0%
+    Aggressive: 0.040           # 4.0%
+    Ultra-Aggressive: 0.050     # 5.0%
+
+asset_tolerance_corridors:
+  NIFTY_50_EQUITY:
+    inner_band: 0.025
+    outer_band: 0.050
+    hard_cap: 0.90
+  G_SEC_BONDS:
+    inner_band: 0.020
+    outer_band: 0.040
+    hard_cap: 0.75
+  CORP_BONDS:
+    inner_band: 0.020
+    outer_band: 0.040
+    hard_cap: 0.40
+  GOLD_ETF:
+    inner_band: 0.015
+    outer_band: 0.030
+    hard_cap: 0.15
+  LIQUID_CASH:
+    inner_band: 0.020
+    outer_band: 0.050
+    min_buffer: 0.020
+    hard_cap: 0.25
+
+event_trigger_rules:
+  market_shock:
+    drawdown_threshold_pct: 0.10     # Sudden market drop > 10%
+    lookback_window_days: 5
+    priority: "CRITICAL"
+  tax_loss_harvesting:
+    active_month: 3                  # March (FY-end India)
+    min_harvestable_loss_inr: 25000
+    priority: "HIGH"
+  regulatory_update:
+    sebi_reclassification: true
+    priority: "HIGH"
+  client_life_event:
+    retirement_window_days: 90
+    liquidity_drawdown_trigger_pct: 0.15
+    priority: "URGENT"
+
+priority_scoring_weights:
+  drift_breach_ratio: 0.40       # (max_drift / threshold)
+  portfolio_aum_weight: 0.25     # Log10(AUM) scaled
+  tracking_error_weight: 0.20    # Tracking error breach
+  event_urgency_weight: 0.15     # Multiplier from trigger tier

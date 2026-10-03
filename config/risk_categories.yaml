@@ -1,0 +1,83 @@
+# Risk Category Profiles and Target Strategic Asset Allocation (SAA)
+# Project 1D: Autonomous Portfolio Rebalancing Agent with Explainable Decisions
+
+risk_categories:
+  Ultra-Conservative:
+    code: "UC"
+    description: "Capital preservation priority with minimal drawdown tolerance."
+    target_weights:
+      NIFTY_50_EQUITY: 0.10
+      G_SEC_BONDS: 0.50
+      CORP_BONDS: 0.25
+      GOLD_ETF: 0.05
+      LIQUID_CASH: 0.10
+    drift_band_pct: 0.020        # 2.0% absolute drift threshold
+    sad_threshold: 0.040         # Sum of Absolute Drift breach
+    rmsd_threshold: 0.015        # RMSD breach
+    max_tracking_error_pct: 0.015
+    rebalance_frequency: "QUARTERLY"
+    turnover_limit_annual_pct: 0.25
+
+  Conservative:
+    code: "C"
+    description: "Income generation focus with modest equity participation."
+    target_weights:
+      NIFTY_50_EQUITY: 0.25
+      G_SEC_BONDS: 0.40
+      CORP_BONDS: 0.20
+      GOLD_ETF: 0.05
+      LIQUID_CASH: 0.10
+    drift_band_pct: 0.025        # 2.5% absolute drift threshold
+    sad_threshold: 0.050
+    rmsd_threshold: 0.020
+    max_tracking_error_pct: 0.020
+    rebalance_frequency: "QUARTERLY"
+    turnover_limit_annual_pct: 0.35
+
+  Balanced:
+    code: "B"
+    description: "Balanced wealth creation balancing equity capital appreciation and debt stability."
+    target_weights:
+      NIFTY_50_EQUITY: 0.50
+      G_SEC_BONDS: 0.25
+      CORP_BONDS: 0.15
+      GOLD_ETF: 0.05
+      LIQUID_CASH: 0.05
+    drift_band_pct: 0.030        # 3.0% absolute drift threshold
+    sad_threshold: 0.060
+    rmsd_threshold: 0.025
+    max_tracking_error_pct: 0.030
+    rebalance_frequency: "SEMI_ANNUALLY"
+    turnover_limit_annual_pct: 0.50
+
+  Aggressive:
+    code: "A"
+    description: "Long-term compounding with high equity allocation and tolerance for volatility."
+    target_weights:
+      NIFTY_50_EQUITY: 0.70
+      G_SEC_BONDS: 0.10
+      CORP_BONDS: 0.10
+      GOLD_ETF: 0.05
+      LIQUID_CASH: 0.05
+    drift_band_pct: 0.040        # 4.0% absolute drift threshold
+    sad_threshold: 0.080
+    rmsd_threshold: 0.035
+    max_tracking_error_pct: 0.045
+    rebalance_frequency: "SEMI_ANNUALLY"
+    turnover_limit_annual_pct: 0.65
+
+  Ultra-Aggressive:
+    code: "UA"
+    description: "Maximum capital growth through dominant equity concentration."
+    target_weights:
+      NIFTY_50_EQUITY: 0.85
+      G_SEC_BONDS: 0.00
+      CORP_BONDS: 0.05
+      GOLD_ETF: 0.05
+      LIQUID_CASH: 0.05
+    drift_band_pct: 0.050        # 5.0% absolute drift threshold
+    sad_threshold: 0.100
+    rmsd_threshold: 0.045
+    max_tracking_error_pct: 0.060
+    rebalance_frequency: "ANNUALLY"
+    turnover_limit_annual_pct: 0.80

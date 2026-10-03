@@ -1,0 +1,62 @@
+# Default System Configuration for WealthPilot AI (Project 1D)
+system:
+  project_code: "1D"
+  project_name: "Autonomous Portfolio Rebalancing Agent with Explainable Decisions"
+  version: "0.1.0"
+  random_seed: 42
+  timezone: "Asia/Kolkata"
+
+portfolio_universe:
+  total_portfolios: 50000
+  asset_classes:
+    - code: "NIFTY_50_EQUITY"
+      name: "Large Cap Indian Equities (NIFTY 50)"
+      annual_return: 0.125
+      annual_volatility: 0.160
+      liquidity_tier: 1
+    - code: "G_SEC_BONDS"
+      name: "Government of India Sovereign Bonds"
+      annual_return: 0.071
+      annual_volatility: 0.045
+      liquidity_tier: 1
+    - code: "CORP_BONDS"
+      name: "AAA Corporate Debt / Credit"
+      annual_return: 0.082
+      annual_volatility: 0.055
+      liquidity_tier: 2
+    - code: "GOLD_ETF"
+      name: "Domestic Gold ETF"
+      annual_return: 0.095
+      annual_volatility: 0.140
+      liquidity_tier: 2
+    - code: "LIQUID_CASH"
+      name: "Overnight & Liquid Cash Buffer"
+      annual_return: 0.062
+      annual_volatility: 0.005
+      liquidity_tier: 1
+
+correlation_matrix:
+  # Order: NIFTY_50_EQUITY, G_SEC_BONDS, CORP_BONDS, GOLD_ETF, LIQUID_CASH
+  - [1.00,  0.08,  0.15, -0.12,  0.01]
+  - [0.08,  1.00,  0.82,  0.10,  0.05]
+  - [0.15,  0.82,  1.00,  0.08,  0.06]
+  - [-0.12, 0.10,  0.08,  1.00,  0.00]
+  - [0.01,  0.05,  0.06,  0.00,  1.00]
+
+monitoring:
+  sla_target_scan_time_seconds: 30.0
+  batch_size: 10000
+  tracking_error_annual_factor: 252.0
+  drift_metrics:
+    - "absolute_drift"
+    - "sum_of_absolute_drift"
+    - "root_mean_square_drift"
+    - "predicted_tracking_error"
+
+taxation:
+  jurisdiction: "INDIA"
+  stcg_equity_rate: 0.20
+  ltcg_equity_rate: 0.125
+  ltcg_exemption_inr: 125000
+  debt_tax_slab: "SLAB_RATE"
+  march_tax_harvesting_window_days: 30
